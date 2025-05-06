@@ -33,7 +33,7 @@ export function AddAirdropForm({ userId }: AddAirdropFormProps) {
   const [formData, setFormData] = useState({
     name: "",
     type: "testnet" as "testnet" | "daily" | "quest" | "node" | "retro",
-    chain: "ethereum" as "ethereum" | "solana" | "avax" | "bnb" | "rise chain" | "monad" | "megaETH" | 'other',
+    chain: "ethereum" as "ethereum" | "solana" | "avax" | "bnb" | "rise_chain" | "monad" | "megaETH" | 'other',
     twitterLink: "",
     discordLink: "",
     airdropLink: "",
@@ -237,6 +237,15 @@ export function AddAirdropForm({ userId }: AddAirdropFormProps) {
                   </SelectItem>
                   <SelectItem value="bnb" className="focus:bg-gray-700 focus:text-white">
                     BNB Chain
+                  </SelectItem>
+                  <SelectItem value="bnb" className="focus:bg-gray-700 focus:text-white">
+                    Rise Chain
+                  </SelectItem>
+                  <SelectItem value="bnb" className="focus:bg-gray-700 focus:text-white">
+                    Monad
+                  </SelectItem>
+                  <SelectItem value="bnb" className="focus:bg-gray-700 focus:text-white">
+                    MegaETH
                   </SelectItem>
                   <SelectItem value="other" className="focus:bg-gray-700 focus:text-white">
                     Other
