@@ -36,4 +36,3 @@ const ChatRoomSchema = new Schema(
 )
 
 export const ChatRoom = mongoose.models.ChatRoom || mongoose.model<IChatRoom>("ChatRoom", ChatRoomSchema)
-

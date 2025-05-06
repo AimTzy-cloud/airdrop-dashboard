@@ -384,25 +384,33 @@ export function GalxeUserClient({
                       <div className="flex gap-2 mt-2 md:mt-0">
                         <Badge
                           variant={statusFilter === "all" ? "default" : "outline"}
-                          className={statusFilter === "all" ? "bg-blue-600" : "border-gray-800 hover:border-gray-700"}
+                          className={`px-4 ${
+                            statusFilter === "all" 
+                              ? "bg-blue-600" 
+                              : "border-gray-800 hover:border-gray-700 text-white"
+                          }`}
                           onClick={() => setStatusFilter("all")}
                         >
                           All
                         </Badge>
                         <Badge
                           variant={statusFilter === "completed" ? "default" : "outline"}
-                          className={
-                            statusFilter === "completed" ? "bg-green-600" : "border-gray-800 hover:border-gray-700"
-                          }
+                          className={`px-4 ${
+                            statusFilter === "all" 
+                              ? "bg-blue-600"
+                              : "border-gray-800 hover:border-gray-700 text-white"
+                          }`}
                           onClick={() => setStatusFilter("completed")}
                         >
                           Completed
                         </Badge>
                         <Badge
                           variant={statusFilter === "pending" ? "default" : "outline"}
-                          className={
-                            statusFilter === "pending" ? "bg-yellow-600" : "border-gray-800 hover:border-gray-700"
-                          }
+                          className={`px-4 ${
+                            statusFilter === "all" 
+                              ? "bg-blue-600" 
+                              : "border-gray-800 hover:border-gray-700 text-white"
+                          }`}
                           onClick={() => setStatusFilter("pending")}
                         >
                           Pending

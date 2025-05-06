@@ -10,6 +10,18 @@ body {
   .text-balance {
     text-wrap: balance;
   }
+  .shadow-glow {
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+  }
+
+  .text-glow {
+    text-shadow: 0 0 10px rgba(59, 130, 246, 0.7);
+  }
+
+  .border-glow {
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
+    border-color: rgba(59, 130, 246, 0.3);
+  }
 }
 
 @layer base {
@@ -23,7 +35,7 @@ body {
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 221.2 83.2% 53.3%;
+    --primary: 265 89% 78%;
     --primary-foreground: 210 40% 98%;
 
     --secondary: 210 40% 96.1%;
@@ -40,7 +52,7 @@ body {
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
+    --ring: 265 89% 78%;
 
     --radius: 0.5rem;
     --sidebar-background: 0 0% 98%;
@@ -63,7 +75,7 @@ body {
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 217.2 91.2% 59.8%;
+    --primary: 265 89% 78%;
     --primary-foreground: 222.2 47.4% 11.2%;
 
     --secondary: 217.2 32.6% 17.5%;
@@ -80,15 +92,15 @@ body {
 
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
+    --ring: 265 89% 78%;
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary: 265 89% 78%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 240 3.7% 15.9%;
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-ring: 265 89% 78%;
   }
 }
 
@@ -99,11 +111,6 @@ body {
   body {
     @apply bg-background text-foreground;
   }
-}
-
-/* Add dark theme by default */
-html {
-  @apply dark;
 }
 
 /* Chat specific styles */

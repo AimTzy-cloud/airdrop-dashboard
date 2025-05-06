@@ -1,24 +1,27 @@
-import type React from "react"
-import { redirect } from "next/navigation"
-import { getSessionAppRouter } from "@/lib/auth-utils-app";
-import { SidebarNav } from "@/components/sidebar-nav"
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
-import { Preloader } from "@/components/preloader"
-import { PageTransition } from "@/components/page-transition"
-import { ParticleBackground } from "@/components/particle-background"
-import { DashboardNav } from "@/components/dashboard-nav"
-import { SidebarArrowTrigger } from "@/components/sidebar-trigger"
-
+import type React from 'react';
+import { redirect } from 'next/navigation';
+import { getSessionAppRouter } from '@/lib/auth-utils-app';
+import { SidebarNav } from '@/components/sidebar-nav';
+import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
+import { Preloader } from '@/components/preloader';
+import { PageTransition } from '@/components/page-transition';
+import { ParticleBackground } from '@/components/particle-background';
+import { DashboardNav } from '@/components/dashboard-nav';
+import { SidebarArrowTrigger } from '@/components/sidebar-trigger';
+import { NotificationListener } from '@/components/notification-listener';
 export default async function DashboardLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
-  const session = await getSessionAppRouter()
+  const session = await getSessionAppRouter();
 
   if (!session) {
-    redirect("/login")
+    redirect('/login');
   }
+
+  // Gunakan userId dari session, fallback ke username jika userId tidak ada
+  const userId = session.userId || session.username;
 
   return (
     <html lang="en">
@@ -30,8 +33,11 @@ export default async function DashboardLayout({
             <SidebarNav username={session.username} />
             <SidebarArrowTrigger />
             <SidebarInset className="bg-[#0a0e17]">
-              {/* Include DashboardNav here, passing the username */}
-              <DashboardNav username={session.username} />
+              {/* Include NotificationListener for real-time notifications */}
+              <NotificationListener userId={userId} username={session.username} />
+
+              {/* Include DashboardNav here, passing the username and userId */}
+              <DashboardNav username={session.username} userId={userId} />
 
               <main className="flex-1 w-full max-w-[1400px] mx-auto px-6 py-8">{children}</main>
             </SidebarInset>
@@ -39,5 +45,5 @@ export default async function DashboardLayout({
         </div>
       </PageTransition>
     </html>
-  )
+  );
 }

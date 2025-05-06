@@ -3,8 +3,8 @@
 import type React from "react"
 import { useState, useRef, useEffect, useCallback } from "react"
 import { sendMessage } from "@/lib/community-actions"
-  
-import type { MessageData, MessageReaction, SocketMessage, UserStatus } from "@/lib/types"
+
+import type { MessageData, MessageReaction, SocketMessage, UserStatus, MessageAttachment } from "@/lib/types"
 import { formatDistanceToNow } from "date-fns"
 import { AnimatePresence, motion } from "framer-motion"
 import {
@@ -285,14 +285,14 @@ export default function ChatRoom({ roomId, userId, username, initialMessages }: 
       setMessages((prev) =>
         prev.map((msg) =>
           msg._id === data.messageId
-            ? {
+            ? ({
                 ...msg,
                 content: data.update.content ?? msg.content,
                 isDeleted: data.update.isDeleted ?? msg.isDeleted,
                 reactions: data.update.reactions ?? msg.reactions,
                 status: data.update.deliveryStatus ?? msg.status,
                 attachments: data.update.attachments ?? msg.attachments,
-              } as EnhancedMessageData
+              } as EnhancedMessageData)
             : msg,
         ),
       )
@@ -373,6 +373,13 @@ export default function ChatRoom({ roomId, userId, username, initialMessages }: 
       setAudioBlob(null)
       setAudioUrl(null)
     }
+  }
+
+  // Upload file to server (simulated)
+  const uploadFile = async (file: File): Promise<string> => {
+    // In a real app, you would upload the file to a server or cloud storage
+    // For this demo, we'll just create an object URL
+    return URL.createObjectURL(file)
   }
 
   // Send voice message
@@ -556,14 +563,51 @@ export default function ChatRoom({ roomId, userId, username, initialMessages }: 
 
     try {
       let content = messageInput.trim()
+      const attachments: MessageAttachment[] = []
 
       if (replyingTo && typeof replyingTo === "object" && replyingTo._id) {
         content = `[REPLY:${replyingTo._id}] ${content}`
       }
 
+      // Handle file attachment
       if (selectedFile) {
-        const fileTypeMessage = `[${mediaType?.toUpperCase()}] ${selectedFile.name}`
-        content = content ? `${content}\n${fileTypeMessage}` : fileTypeMessage
+        try {
+          const fileUrl = await uploadFile(selectedFile)
+
+          // Create attachment object
+          const attachment: MessageAttachment = {
+            type: mediaType || "document",
+            url: fileUrl,
+            name: selectedFile.name,
+            size: selectedFile.size,
+            mimeType: selectedFile.type,
+          }
+
+          // Add dimensions for images and videos
+          if (mediaType === "image" || mediaType === "video") {
+            // For demo purposes, we'll use placeholder dimensions
+            attachment.dimensions = { width: 800, height: 600 }
+          }
+
+          // Add duration for videos
+          if (mediaType === "video") {
+            // For demo purposes, we'll use a placeholder duration
+            attachment.duration = 30
+          }
+
+          attachments.push(attachment)
+
+          // Add file type to message content
+          const fileTypeMessage = `[${mediaType?.toUpperCase()}] ${selectedFile.name}`
+          content = content ? `${content}\n${fileTypeMessage}` : fileTypeMessage
+        } catch (error) {
+          console.error("Error uploading file:", error)
+          toast({
+            title: "Upload Error",
+            description: "Failed to upload file. Please try again.",
+            variant: "destructive",
+          })
+        }
       }
 
       const result = await sendMessage(roomId, userId, username, content)
@@ -577,13 +621,14 @@ export default function ChatRoom({ roomId, userId, username, initialMessages }: 
             reactions: [],
             replyTo: replyingTo && typeof replyingTo === "object" ? replyingTo._id : undefined,
             replyToMessage: replyingTo && typeof replyingTo === "object" ? replyingTo : null,
+            attachments: attachments.length > 0 ? attachments : undefined,
           }
 
           setMessages((prev) => [...prev, enhancedMessage])
 
           // Emit new-message via socket
           if (socket) {
-            socket.emit("new-message", enhancedMessage)
+            socket.emit("new-message", enhancedMessage as SocketMessage)
           }
 
           setTimeout(() => {
@@ -625,10 +670,10 @@ export default function ChatRoom({ roomId, userId, username, initialMessages }: 
   // Handle keyboard shortcuts
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
+      e.preventDefault()
+      handleSendMessage()
     }
-  
+
     // Emit user-typing event via socket
     if (socket && e.key !== "Enter") {
       socket.emit("typing", {
@@ -636,11 +681,11 @@ export default function ChatRoom({ roomId, userId, username, initialMessages }: 
         username,
         roomId,
         isTyping: true,
-      });
-  
+      })
+
       // Clear typing status after 3 seconds
       if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
+        clearTimeout(typingTimeoutRef.current)
       }
       typingTimeoutRef.current = setTimeout(() => {
         socket.emit("typing", {
@@ -648,10 +693,10 @@ export default function ChatRoom({ roomId, userId, username, initialMessages }: 
           username,
           roomId,
           isTyping: false,
-        });
-      }, 3000); // Perbaikan di sini
+        })
+      }, 3000)
     }
-  };
+  }
 
   // Handle file selection
   const handleFileSelect = (type: "image" | "video" | "document" | "sticker") => {
@@ -784,6 +829,42 @@ export default function ChatRoom({ roomId, userId, username, initialMessages }: 
     }
   }
 
+  // Generate a demo message with attachment for testing
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const generateDemoMessageWithAttachment = (type: "image" | "video" | "document" | "sticker") => {
+    const demoAttachment: MessageAttachment = {
+      type,
+      url:
+        type === "image"
+          ? "/demo-image.jpg"
+          : type === "video"
+            ? "/demo-video.mp4"
+            : type === "document"
+              ? "/demo-document.pdf"
+              : "/demo-sticker.webp",
+      name: `Demo ${type}`,
+      size: 1024 * 1024, // 1MB
+      mimeType:
+        type === "image"
+          ? "image/jpeg"
+          : type === "video"
+            ? "video/mp4"
+            : type === "document"
+              ? "application/pdf"
+              : "image/webp",
+    }
+
+    if (type === "image" || type === "video") {
+      demoAttachment.dimensions = { width: 800, height: 600 }
+    }
+
+    if (type === "video") {
+      demoAttachment.duration = 30
+    }
+
+    return demoAttachment
+  }
+
   // Parse message content for special formats
   const parseMessageContent = (message: EnhancedMessageData) => {
     if (message.isDeleted) {
@@ -791,6 +872,75 @@ export default function ChatRoom({ roomId, userId, username, initialMessages }: 
     }
 
     let content = message.content
+
+    // Handle attachments
+    if (message.attachments && message.attachments.length > 0) {
+      const attachment = message.attachments[0]
+
+      if (attachment.type === "image") {
+        return (
+          <div className="space-y-2">
+            <div className="rounded-lg overflow-hidden border border-gray-700 max-w-xs">
+              <Image
+                src={attachment.url || "/placeholder.svg"}
+                alt={attachment.name || "Image"}
+                width={attachment.dimensions?.width || 400}
+                height={attachment.dimensions?.height || 300}
+                className="w-full h-auto object-cover"
+              />
+            </div>
+            {content.replace(/\[IMAGE\].*$/m, "").trim() && (
+              <div className="text-sm">{content.replace(/\[IMAGE\].*$/m, "").trim()}</div>
+            )}
+          </div>
+        )
+      } else if (attachment.type === "video") {
+        return (
+          <div className="space-y-2">
+            <div className="rounded-lg overflow-hidden border border-gray-700 max-w-xs">
+              <video src={attachment.url} controls className="w-full h-auto max-h-60" poster="/video-thumbnail.jpg" />
+            </div>
+            {content.replace(/\[VIDEO\].*$/m, "").trim() && (
+              <div className="text-sm">{content.replace(/\[VIDEO\].*$/m, "").trim()}</div>
+            )}
+          </div>
+        )
+      } else if (attachment.type === "document") {
+        return (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 p-3 rounded-lg border border-gray-700 bg-gray-800/50 max-w-xs">
+              <FileText className="h-8 w-8 text-orange-400" />
+              <div className="overflow-hidden">
+                <div className="text-sm font-medium truncate">{attachment.name}</div>
+                <div className="text-xs text-gray-400">
+                  {(attachment.size && Math.round(attachment.size / 1024)) || 0} KB
+                </div>
+              </div>
+              <a href={attachment.url} target="_blank" rel="noopener noreferrer" className="ml-auto">
+                <Download className="h-4 w-4 text-gray-400 hover:text-white" />
+              </a>
+            </div>
+            {content.replace(/\[DOCUMENT\].*$/m, "").trim() && (
+              <div className="text-sm">{content.replace(/\[DOCUMENT\].*$/m, "").trim()}</div>
+            )}
+          </div>
+        )
+      } else if (attachment.type === "sticker") {
+        return (
+          <div className="space-y-2">
+            <div className="max-w-[120px] max-h-[120px]">
+              <Image
+                src={attachment.url || "/placeholder.svg"}
+                alt="Sticker"
+                width={120}
+                height={120}
+                className="w-full h-auto object-contain"
+              />
+            </div>
+          </div>
+        )
+      }
+    }
 
     if (content.startsWith("[REPLY:")) {
       const endIndex = content.indexOf("]")

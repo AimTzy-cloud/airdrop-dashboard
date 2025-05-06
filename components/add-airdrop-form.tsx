@@ -33,7 +33,7 @@ export function AddAirdropForm({ userId }: AddAirdropFormProps) {
   const [formData, setFormData] = useState({
     name: "",
     type: "testnet" as "testnet" | "daily" | "quest" | "node" | "retro",
-    chain: "ethereum" as "ethereum" | "solana" | "avax" | "bnb" | "other",
+    chain: "ethereum" as "ethereum" | "solana" | "avax" | "bnb" | "rise chain" | "monad" | "megaETH" | 'other',
     twitterLink: "",
     discordLink: "",
     airdropLink: "",

@@ -83,4 +83,3 @@ export async function logoutUser() {
   cookies().delete(TOKEN_NAME)
   return { success: true }
 }
-

@@ -100,4 +100,3 @@ export function FileUpload({ id, label, value, onChange, accept = "image/*", hel
     </div>
   )
 }
-

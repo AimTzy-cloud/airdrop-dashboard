@@ -23,6 +23,8 @@ export interface User {
   lastActive?: Date
   connections?: string[]
   joinedDate?: Date
+  createdAt?: string | Date; // Tambahkan
+  updatedAt?: string | Date;
   settings?: {
     theme: string
     notifications: boolean
@@ -33,6 +35,7 @@ export interface User {
 export interface Session {
   userId: string
   username: string
+  role?: 'admin' | 'moderator' | 'member';
 }
 
 export interface ChatRoomData {
