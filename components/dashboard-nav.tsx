@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -24,7 +24,7 @@ import { useToast } from '@/hooks/use-toast';
 interface DashboardNavProps {
   username: string;
   userId: string;
-  profilePicture?: string | null; // Tambah prop untuk foto profil
+  profilePicture?: string | null;
 }
 
 export function DashboardNav({ username, userId, profilePicture }: DashboardNavProps) {
@@ -59,7 +59,6 @@ export function DashboardNav({ username, userId, profilePicture }: DashboardNavP
       console.log(`[Logout] Current sessionStorage:`, JSON.stringify(sessionStorage));
       console.log(`[Logout] Current cookies:`, document.cookie);
 
-      // Hapus semua data login di client
       localStorage.removeItem('username');
       localStorage.removeItem('userId');
       localStorage.removeItem('auth_token');
@@ -67,14 +66,12 @@ export function DashboardNav({ username, userId, profilePicture }: DashboardNavP
       sessionStorage.removeItem('userId');
       sessionStorage.removeItem('auth_token');
 
-      // Hapus cookie auth_token dengan path eksplisit
       document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Strict';
       document.cookie = 'auth_token=; path=/dashboard; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Strict';
       document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Strict';
 
       console.log(`[Logout] Cookies after client-side deletion:`, document.cookie);
 
-      // Panggil API logout
       const response = await fetch('/api/auth/logout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -94,7 +91,6 @@ export function DashboardNav({ username, userId, profilePicture }: DashboardNavP
         description: 'You have been successfully logged out',
       });
 
-      // Force redirect ke /login
       router.push('/login');
       setTimeout(() => {
         window.location.href = '/login';
@@ -154,8 +150,11 @@ export function DashboardNav({ username, userId, profilePicture }: DashboardNavP
     },
   ];
 
-  // Tambah cache buster untuk DiceBear
-  const diceBearUrl = `https://api.dicebear.com/7.x/initials/svg?seed=${username}&t=${Date.now()}`;
+  // Gunakan useMemo untuk diceBearUrl
+  const diceBearUrl = useMemo(
+    () => `https://api.dicebear.com/7.x/initials/svg?seed=${username}`,
+    [username]
+  );
 
   return (
     <>
@@ -429,6 +428,7 @@ export function DashboardNav({ username, userId, profilePicture }: DashboardNavP
                     <div>
                       <span className='text-sm font-medium text-white'>{username}</span>
                       <p className='text-xs text-gray-400'>Member</p>
+                      <p className='text-xs text-gray-400'>{profilePicture}</p>
                     </div>
                   </div>
 
