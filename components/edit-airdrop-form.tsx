@@ -255,6 +255,15 @@ export function EditAirdropForm({ airdrop, userId }: EditAirdropFormProps) {
                   <SelectItem value="bnb" className="focus:bg-gray-700 focus:text-white">
                     BNB Chain
                   </SelectItem>
+                  <SelectItem value="rise_chain" className="focus:bg-gray-700 focus:text-white">
+                                      Rise Chain
+                                    </SelectItem>
+                                    <SelectItem value="monad" className="focus:bg-gray-700 focus:text-white">
+                                      Monad
+                                    </SelectItem>
+                                    <SelectItem value="megaeth" className="focus:bg-gray-700 focus:text-white">
+                                      MegaETH
+                                    </SelectItem>
                   <SelectItem value="other" className="focus:bg-gray-700 focus:text-white">
                     Other
                   </SelectItem>
