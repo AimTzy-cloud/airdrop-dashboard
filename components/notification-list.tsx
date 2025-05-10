@@ -1,21 +1,16 @@
-'use client';
+"use client"
 
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, RefreshCw, Trash2, Check, MessageSquare, Trophy, Settings, Filter } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useToast } from '@/hooks/use-toast';
-import { useNotificationStore } from '@/lib/notification-service';
-import { formatDistanceToNow } from 'date-fns';
-import { cn } from '@/lib/utils';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { useState, useEffect, useCallback } from "react"
+import { motion, AnimatePresence } from "framer-motion"
+import { Bell, RefreshCw, Trash2, Check, MessageSquare, Trophy, Settings, Filter } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useToast } from "@/hooks/use-toast"
+import { useNotificationStore } from "@/lib/notification-store"
+import { formatDistanceToNow } from "date-fns"
+import { cn } from "@/lib/utils"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,147 +20,147 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import type { Notification } from '@/lib/notification-service';
+} from "@/components/ui/alert-dialog"
+import type { Notification } from "@/lib/types"
 
 export function NotificationList() {
-  const { toast } = useToast();
+  const { toast } = useToast()
   const { notifications, fetchNotifications, markAsRead, deleteNotification, markAllAsRead, deleteAllNotifications } =
-    useNotificationStore();
+    useNotificationStore()
 
-  const [isLoading, setIsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('all');
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [markingId, setMarkingId] = useState<string | null>(null);
-  const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [isMarkingAll, setIsMarkingAll] = useState(false);
+  const [isLoading, setIsLoading] = useState(false)
+  const [activeTab, setActiveTab] = useState("all")
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [markingId, setMarkingId] = useState<string | null>(null)
+  const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [isMarkingAll, setIsMarkingAll] = useState(false)
 
-  const userId = '680da163a8035b63ddd8b200'; // Ganti dengan auth context nanti
+  const userId = "680da163a8035b63ddd8b200" // Ganti dengan auth context nanti
 
   // Filter notifications by type based on active tab
   const filteredNotifications = notifications.filter((notification: Notification) => {
-    if (activeTab === 'all') return true;
-    return notification.type === activeTab;
-  });
+    if (activeTab === "all") return true
+    return notification.type === activeTab
+  })
 
-  const unreadCount = notifications.filter((n: Notification) => !n.read && n.userId === userId).length;
+  const unreadCount = notifications.filter((n: Notification) => !n.isRead && n.userId === userId).length
 
-  const loadNotifications = async () => {
-    setIsLoading(true);
-    console.log(`NotificationList fetching notifications for userId: ${userId}`);
+  const loadNotifications = useCallback(async () => {
+    setIsLoading(true)
+    console.log(`NotificationList fetching notifications for userId: ${userId}`)
     try {
-      await fetchNotifications(userId);
+      await fetchNotifications(userId)
     } catch (error) {
-      console.error('Failed to fetch notifications:', error);
+      console.error("Failed to fetch notifications:", error)
       toast({
-        title: 'Error',
-        description: 'Failed to load notifications. Please try again.',
-        variant: 'destructive',
-      });
+        title: "Error",
+        description: "Failed to load notifications. Please try again.",
+        variant: "destructive",
+      })
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }, [fetchNotifications, toast, userId])
 
   useEffect(() => {
-    loadNotifications();
-    // Hanya fetch sekali, tanpa polling
-  }, [userId]);
+    loadNotifications()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId])
 
   const handleMarkAsRead = async (id: string) => {
-    setMarkingId(id);
+    setMarkingId(id)
     try {
-      await markAsRead(id);
+      await markAsRead(id)
       toast({
-        title: 'Success',
-        description: 'Notification marked as read',
-      });
+        title: "Success",
+        description: "Notification marked as read",
+      })
     } catch (error) {
-      console.error('Failed to mark notification as read:', error);
+      console.error("Failed to mark notification as read:", error)
       toast({
-        title: 'Error',
-        description: 'Failed to mark notification as read',
-        variant: 'destructive',
-      });
+        title: "Error",
+        description: "Failed to mark notification as read",
+        variant: "destructive",
+      })
     } finally {
-      setMarkingId(null);
+      setMarkingId(null)
     }
-  };
+  }
 
   const handleDelete = async (id: string) => {
-    setDeletingId(id);
+    setDeletingId(id)
     try {
-      await deleteNotification(id);
+      await deleteNotification(id)
       toast({
-        title: 'Success',
-        description: 'Notification deleted',
-      });
+        title: "Success",
+        description: "Notification deleted",
+      })
     } catch (error) {
-      console.error('Failed to delete notification:', error);
+      console.error("Failed to delete notification:", error)
       toast({
-        title: 'Error',
-        description: 'Failed to delete notification',
-        variant: 'destructive',
-      });
+        title: "Error",
+        description: "Failed to delete notification",
+        variant: "destructive",
+      })
     } finally {
-      setDeletingId(null);
+      setDeletingId(null)
     }
-  };
+  }
 
   const handleMarkAllAsRead = async () => {
-    setIsMarkingAll(true);
+    setIsMarkingAll(true)
     try {
-      await markAllAsRead(userId);
+      await markAllAsRead(userId)
       toast({
-        title: 'Success',
-        description: 'All notifications marked as read',
-      });
+        title: "Success",
+        description: "All notifications marked as read",
+      })
     } catch (error) {
-      console.error('Failed to mark all notifications as read:', error);
+      console.error("Failed to mark all notifications as read:", error)
       toast({
-        title: 'Error',
-        description: 'Failed to mark all notifications as read',
-        variant: 'destructive',
-      });
+        title: "Error",
+        description: "Failed to mark all notifications as read",
+        variant: "destructive",
+      })
     } finally {
-      setIsMarkingAll(false);
+      setIsMarkingAll(false)
     }
-  };
+  }
 
   const handleDeleteAll = async () => {
-    setIsDeleting(true);
+    setIsDeleting(true)
     try {
-      await deleteAllNotifications(userId);
-      setShowDeleteAllDialog(false);
+      await deleteAllNotifications(userId)
+      setShowDeleteAllDialog(false)
       toast({
-        title: 'Success',
-        description: 'All notifications deleted',
-      });
+        title: "Success",
+        description: "All notifications deleted",
+      })
     } catch (error) {
-      console.error('Failed to delete all notifications:', error);
+      console.error("Failed to delete all notifications:", error)
       toast({
-        title: 'Error',
-        description: 'Failed to delete all notifications',
-        variant: 'destructive',
-      });
+        title: "Error",
+        description: "Failed to delete all notifications",
+        variant: "destructive",
+      })
     } finally {
-      setIsDeleting(false);
+      setIsDeleting(false)
     }
-  };
+  }
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
-      case 'message':
-        return <MessageSquare className="h-5 w-5 text-green-400" />;
-      case 'quest':
-        return <Trophy className="h-5 w-5 text-purple-400" />;
-      case 'system':
-        return <Settings className="h-5 w-5 text-blue-400" />;
+      case "message":
+        return <MessageSquare className="h-5 w-5 text-green-400" />
+      case "quest":
+        return <Trophy className="h-5 w-5 text-purple-400" />
+      case "system":
+        return <Settings className="h-5 w-5 text-blue-400" />
       default:
-        return <Bell className="h-5 w-5 text-gray-400" />;
+        return <Bell className="h-5 w-5 text-gray-400" />
     }
-  };
+  }
 
   return (
     <Card className="bg-[#1a1f2e] border-gray-700 shadow-lg">
@@ -192,7 +187,7 @@ export function NotificationList() {
               onClick={loadNotifications}
               disabled={isLoading}
             >
-              <RefreshCw className={cn('h-4 w-4 mr-2', isLoading && 'animate-spin')} />
+              <RefreshCw className={cn("h-4 w-4 mr-2", isLoading && "animate-spin")} />
               Refresh
             </Button>
 
@@ -258,7 +253,7 @@ export function NotificationList() {
             <div className="flex flex-col items-center justify-center py-12 text-gray-400">
               <motion.div
                 animate={{ rotate: 360 }}
-                transition={{ duration: 1.5, repeat: Number.POSITIVE_INFINITY, ease: 'linear' }}
+                transition={{ duration: 1.5, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
               >
                 <RefreshCw className="h-12 w-12 opacity-50" />
               </motion.div>
@@ -271,8 +266,8 @@ export function NotificationList() {
               >
                 <motion.div
                   className="h-full bg-gradient-to-r from-blue-500 to-purple-500"
-                  initial={{ width: '0%' }}
-                  animate={{ width: '100%' }}
+                  initial={{ width: "0%" }}
+                  animate={{ width: "100%" }}
                   transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY }}
                 />
               </motion.div>
@@ -282,7 +277,7 @@ export function NotificationList() {
               <Bell className="h-16 w-16 opacity-30 mb-4" />
               <p className="text-lg mb-2">No notifications</p>
               <p className="text-sm text-gray-500">
-                You don&apos;t have any {activeTab !== 'all' ? activeTab : ''} notifications yet
+                You don&apos;t have any {activeTab !== "all" ? activeTab : ""} notifications yet
               </p>
             </div>
           ) : (
@@ -296,11 +291,11 @@ export function NotificationList() {
                     exit={{ opacity: 0, height: 0, marginTop: 0, marginBottom: 0 }}
                     transition={{ duration: 0.3 }}
                     className={cn(
-                      'p-4 rounded-lg border relative overflow-hidden group transition-all',
-                      notification.read ? 'bg-gray-800/30 border-gray-700' : 'bg-gray-800/60 border-gray-600',
+                      "p-4 rounded-lg border relative overflow-hidden group transition-all",
+                      notification.isRead ? "bg-gray-800/30 border-gray-700" : "bg-gray-800/60 border-gray-600",
                     )}
                   >
-                    {!notification.read && (
+                    {!notification.isRead && (
                       <motion.div
                         className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500"
                         initial={{ scaleY: 0 }}
@@ -316,10 +311,10 @@ export function NotificationList() {
                         <div className="flex items-center mb-1">
                           <span
                             className={cn(
-                              'text-xs font-medium px-2 py-0.5 rounded-full mr-2',
-                              notification.type === 'message' && 'bg-green-500/20 text-green-300',
-                              notification.type === 'quest' && 'bg-purple-500/20 text-purple-300',
-                              notification.type === 'system' && 'bg-blue-500/20 text-blue-300',
+                              "text-xs font-medium px-2 py-0.5 rounded-full mr-2",
+                              notification.type === "message" && "bg-green-500/20 text-green-300",
+                              notification.type === "quest" && "bg-purple-500/20 text-purple-300",
+                              notification.type === "system" && "bg-blue-500/20 text-blue-300",
                             )}
                           >
                             {notification.type.charAt(0).toUpperCase() + notification.type.slice(1)}
@@ -329,10 +324,10 @@ export function NotificationList() {
                           </span>
                         </div>
                         <h4 className="text-base font-medium text-white mb-1">{notification.title}</h4>
-                        <p className="text-sm text-gray-400">{notification.message}</p>
+                        <p className="text-sm text-gray-400">{notification.content}</p>
 
                         <div className="flex justify-end mt-3 space-x-2">
-                          {!notification.read && (
+                          {!notification.isRead && (
                             <Button
                               variant="outline"
                               size="sm"
@@ -375,8 +370,8 @@ export function NotificationList() {
 
       <CardFooter className="border-t border-gray-700 flex justify-between pt-4">
         <div className="text-sm text-gray-400">
-          {filteredNotifications.length} {activeTab !== 'all' ? activeTab : ''} notification
-          {filteredNotifications.length !== 1 ? 's' : ''}
+          {filteredNotifications.length} {activeTab !== "all" ? activeTab : ""} notification
+          {filteredNotifications.length !== 1 ? "s" : ""}
         </div>
 
         <div className="flex gap-2">
@@ -418,8 +413,8 @@ export function NotificationList() {
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => {
-                e.preventDefault();
-                handleDeleteAll();
+                e.preventDefault()
+                handleDeleteAll()
               }}
               disabled={isDeleting}
               className="bg-red-500 hover:bg-red-600 text-white"
@@ -440,5 +435,5 @@ export function NotificationList() {
         </AlertDialogContent>
       </AlertDialog>
     </Card>
-  );
+  )
 }

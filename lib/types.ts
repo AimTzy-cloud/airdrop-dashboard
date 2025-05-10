@@ -23,8 +23,8 @@ export interface User {
   lastActive?: Date
   connections?: string[]
   joinedDate?: Date
-  createdAt?: string | Date; // Tambahkan
-  updatedAt?: string | Date;
+  createdAt?: string | Date // Tambahkan
+  updatedAt?: string | Date
   settings?: {
     theme: string
     notifications: boolean
@@ -35,7 +35,8 @@ export interface User {
 export interface Session {
   userId: string
   username: string
-  role?: 'admin' | 'moderator' | 'member';
+  role?: "admin" | "moderator" | "member"
+  profilePicture?: string
 }
 
 export interface ChatRoomData {
@@ -212,4 +213,40 @@ export interface SocketMessage extends MessageData {
     status: string
     timestamp: Date
   }
+}
+
+export interface UserData {
+  _id: string
+  username: string
+  bio?: string
+  profilePicture?: string
+  role: "admin" | "moderator" | "member"
+  status: "online" | "away" | "offline"
+  lastActive: Date
+  joinedDate: Date
+  createdAt: Date
+  updatedAt: Date
+  settings?: {
+    theme?: string
+    notifications?: boolean
+    language?: string
+  }
+  connections: string[]
+}
+
+// Notification types
+export type NotificationType = "message" | "quest" | "connection" | "system"
+
+export interface Notification {
+  id: string
+  userId: string
+  title: string
+  message?: string // For backward compatibility
+  content: string
+  type: NotificationType
+  isRead: boolean
+  createdAt: string
+  link?: string
+  sourceId?: string
+  sourceType?: string
 }

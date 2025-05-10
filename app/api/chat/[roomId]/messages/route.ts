@@ -2,12 +2,19 @@ import { type NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db";
 import { Message } from "@/lib/models/message";
 import { ChatRoom } from "@/lib/models/chatroom";
-import { getSessionAppRouter } from "@/lib/auth-utils-app"; // Ganti getServerSession jadi getSessionAppRouter
+import { getSessionAppRouter } from "@/lib/auth-utils-app";
 import mongoose from "mongoose";
+import { sendMessageNotification } from "@/lib/community-actions";
+
+// Interface untuk hasil lean() dari ChatRoom
+interface ChatRoomLean {
+  members: string[];
+  name: string;
+}
 
 export async function GET(req: NextRequest, { params }: { params: { roomId: string } }) {
   try {
-    const session = await getSessionAppRouter(); // Ganti getServerSession
+    const session = await getSessionAppRouter();
 
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -29,7 +36,7 @@ export async function GET(req: NextRequest, { params }: { params: { roomId: stri
       return NextResponse.json({ error: "Chat room not found" }, { status: 404 });
     }
 
-    if (room.isPrivate && !room.members.includes(session.userId)) { // Ganti session.user.id jadi session.userId
+    if (room.isPrivate && !room.members.some((member: mongoose.Types.ObjectId) => member.toString() === session.userId)) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
@@ -39,7 +46,7 @@ export async function GET(req: NextRequest, { params }: { params: { roomId: stri
     const before = url.searchParams.get("before");
 
     // Build query
-    const query: Record<string, unknown> = { roomId }; // Ganti any jadi Record<string, unknown>
+    const query: Record<string, unknown> = { roomId };
 
     if (before) {
       query.createdAt = { $lt: new Date(before) };
@@ -56,13 +63,13 @@ export async function GET(req: NextRequest, { params }: { params: { roomId: stri
     await Message.updateMany(
       {
         roomId,
-        senderId: { $ne: session.userId }, // Ganti session.user.id jadi session.userId
-        readBy: { $ne: session.userId }, // Ganti session.user.id jadi session.userId
+        senderId: { $ne: session.userId },
+        readBy: { $ne: session.userId },
       },
       {
         $set: { deliveryStatus: "read" },
-        $addToSet: { readBy: session.userId }, // Ganti session.user.id jadi session.userId
-      }
+        $addToSet: { readBy: session.userId },
+      },
     );
 
     return NextResponse.json({
@@ -73,14 +80,14 @@ export async function GET(req: NextRequest, { params }: { params: { roomId: stri
     console.error("Error fetching messages:", error);
     return NextResponse.json(
       { error: "Failed to fetch messages", details: error instanceof Error ? error.message : "Unknown error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 export async function POST(req: NextRequest, { params }: { params: { roomId: string } }) {
   try {
-    const session = await getSessionAppRouter(); // Ganti getServerSession
+    const session = await getSessionAppRouter();
 
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -102,7 +109,7 @@ export async function POST(req: NextRequest, { params }: { params: { roomId: str
       return NextResponse.json({ error: "Chat room not found" }, { status: 404 });
     }
 
-    if (room.isPrivate && !room.members.includes(session.userId)) { // Ganti session.user.id jadi session.userId
+    if (room.isPrivate && !room.members.some((member: mongoose.Types.ObjectId) => member.toString() === session.userId)) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
@@ -116,18 +123,39 @@ export async function POST(req: NextRequest, { params }: { params: { roomId: str
     // Create new message
     const message = new Message({
       roomId,
-      senderId: session.userId, // Ganti session.user.id jadi session.userId
-      senderUsername: session.username, // Ganti session.user.name jadi session.username
+      senderId: session.userId,
+      senderUsername: session.username,
       content: content || "",
       replyTo: replyTo || null,
       attachments: attachments || [],
-      readBy: [session.userId], // Ganti session.user.id jadi session.userId
+      readBy: [session.userId],
     });
 
     await message.save();
 
     // Update room's updatedAt timestamp
     await ChatRoom.findByIdAndUpdate(roomId, { updatedAt: new Date() });
+
+    // Kirim notifikasi ke semua anggota chat room kecuali pengirim
+    const roomMembers = await ChatRoom.findById(roomId)
+      .select("members name")
+      .lean() as ChatRoomLean | null;
+
+    if (roomMembers && roomMembers.members) {
+      for (const memberId of roomMembers.members) {
+        // Skip pengirim pesan
+        if (memberId.toString() === session.userId) continue;
+
+        // Kirim notifikasi ke anggota lain
+        await sendMessageNotification(
+          memberId.toString(),
+          session.username,
+          roomMembers.name,
+          roomId,
+          message.content,
+        );
+      }
+    }
 
     return NextResponse.json({
       success: true,
@@ -137,7 +165,7 @@ export async function POST(req: NextRequest, { params }: { params: { roomId: str
     console.error("Error sending message:", error);
     return NextResponse.json(
       { error: "Failed to send message", details: error instanceof Error ? error.message : "Unknown error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

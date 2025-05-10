@@ -1,6 +1,6 @@
 'use client';
 
-import type { Notification } from '@/lib/notification-service';
+import type { Notification } from '@/lib/types';
 
 // Base URL for API calls
 const API_BASE_URL = '/api/notifications';

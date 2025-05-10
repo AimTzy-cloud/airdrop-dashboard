@@ -1,86 +1,111 @@
-'use client';
+"use client"
 
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, X, Check, Trash2, RefreshCw, ChevronRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { useNotificationStore } from '@/lib/notification-service';
-import { formatDistanceToNow } from 'date-fns';
-import { cn } from '@/lib/utils';
-import type { Notification } from '@/lib/notification-service';
+import { useState, useEffect } from "react"
+import { motion, AnimatePresence } from "framer-motion"
+import { Bell, X, Check, Trash2, RefreshCw, ChevronRight } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { useNotificationStore } from "@/lib/notification-store"
+import {
+  getUserNotifications,
+  markNotificationAsRead,
+  deleteNotification as apiDeleteNotification,
+} from "@/lib/notification-service"
+import { formatDistanceToNow } from "date-fns"
+import { cn } from "@/lib/utils"
+import type { Notification, NotificationType } from "@/lib/types"
 
 interface NotificationPanelProps {
-  onClose?: () => void;
-  onViewAll?: () => void;
-  userId: string; // Hapus default user123
+  onClose?: () => void
+  onViewAll?: () => void
+  userId: string
 }
 
 export function NotificationPanel({ onClose, onViewAll, userId }: NotificationPanelProps) {
-  const { notifications, fetchNotifications, markAsRead, deleteNotification, markAllAsRead } = useNotificationStore();
-  const [isLoading, setIsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('all');
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [markingId, setMarkingId] = useState<string | null>(null);
+  const { notifications, markAsRead, deleteNotification, markAllAsRead, setNotifications } = useNotificationStore()
+  const [isLoading, setIsLoading] = useState(false)
+  const [activeTab, setActiveTab] = useState("all")
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [markingId, setMarkingId] = useState<string | null>(null)
 
   // Filter notifications by userId
-  const userNotifications = notifications.filter((n: Notification) => n.userId === userId);
+  const userNotifications = notifications.filter((n: Notification) => n.userId === userId)
 
   // Filter notifications by type based on active tab
   const filteredNotifications = userNotifications.filter((notification: Notification) => {
-    if (activeTab === 'all') return true;
-    return notification.type === activeTab;
-  });
+    if (activeTab === "all") return true
+    return notification.type === (activeTab as NotificationType)
+  })
 
-  const unreadCount = userNotifications.filter((n: Notification) => !n.read).length;
+  const userUnreadCount = userNotifications.filter((n: Notification) => !n.isRead).length
 
   const loadNotifications = async () => {
-    setIsLoading(true);
-    console.log(`NotificationPanel fetching notifications for userId: ${userId}`);
+    setIsLoading(true)
+    console.log(`NotificationPanel fetching notifications for userId: ${userId}`)
     try {
-      await fetchNotifications(userId);
+      const response = await getUserNotifications(userId)
+      if (response.success && response.data) {
+        setNotifications(response.data)
+      }
     } catch (error) {
-      console.error('Failed to fetch notifications:', error);
+      console.error("Failed to fetch notifications:", error)
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
   useEffect(() => {
-    loadNotifications();
+    loadNotifications()
     // Hanya fetch sekali, tanpa polling
-  }, [userId]);
+  }, [userId, setNotifications])
 
   const handleMarkAsRead = async (id: string) => {
-    setMarkingId(id);
+    setMarkingId(id)
     try {
-      await markAsRead(id);
+      const response = await markNotificationAsRead(id)
+      if (response.success) {
+        markAsRead(id)
+      }
     } catch (error) {
-      console.error('Failed to mark notification as read:', error);
+      console.error("Failed to mark notification as read:", error)
     } finally {
-      setMarkingId(null);
+      setMarkingId(null)
     }
-  };
+  }
 
   const handleDelete = async (id: string) => {
-    setDeletingId(id);
+    setDeletingId(id)
     try {
-      await deleteNotification(id);
+      await apiDeleteNotification(id)
+      // Update local state regardless of API response
+      deleteNotification(id)
     } catch (error) {
-      console.error('Failed to delete notification:', error);
+      console.error("Failed to delete notification:", error)
     } finally {
-      setDeletingId(null);
+      setDeletingId(null)
     }
-  };
+  }
 
   const handleMarkAllAsRead = async () => {
     try {
-      await markAllAsRead(userId);
+      // Call API to mark all notifications as read for this user
+      const response = await fetch(`/api/notifications/mark-all-read`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ userId }),
+      })
+
+      if (response.ok) {
+        // Update local state
+        markAllAsRead(userId)
+      }
     } catch (error) {
-      console.error('Failed to mark all notifications as read:', error);
+      console.error("Failed to mark all notifications as read:", error)
     }
-  };
+  }
 
   return (
     <motion.div
@@ -93,13 +118,13 @@ export function NotificationPanel({ onClose, onViewAll, userId }: NotificationPa
         <div className="flex items-center">
           <Bell className="h-5 w-5 mr-2 text-blue-400" />
           <h3 className="font-medium text-white">Notifications</h3>
-          {unreadCount > 0 && (
+          {userUnreadCount > 0 && (
             <motion.span
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               className="ml-2 px-1.5 py-0.5 text-xs font-medium bg-red-500 text-white rounded-full"
             >
-              {unreadCount}
+              {userUnreadCount}
             </motion.span>
           )}
         </div>
@@ -111,7 +136,7 @@ export function NotificationPanel({ onClose, onViewAll, userId }: NotificationPa
             onClick={loadNotifications}
             disabled={isLoading}
           >
-            <RefreshCw className={cn('h-4 w-4', isLoading && 'animate-spin')} />
+            <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
           </Button>
           <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-white" onClick={onClose}>
             <X className="h-4 w-4" />
@@ -143,7 +168,7 @@ export function NotificationPanel({ onClose, onViewAll, userId }: NotificationPa
               <div className="flex flex-col items-center justify-center h-[250px] text-gray-400">
                 <motion.div
                   animate={{ rotate: 360 }}
-                  transition={{ duration: 1.5, repeat: Number.POSITIVE_INFINITY, ease: 'linear' }}
+                  transition={{ duration: 1.5, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
                 >
                   <RefreshCw className="h-8 w-8 opacity-50" />
                 </motion.div>
@@ -160,15 +185,15 @@ export function NotificationPanel({ onClose, onViewAll, userId }: NotificationPa
                   <motion.div
                     key={notification.id}
                     initial={{ opacity: 0, height: 0, y: -20 }}
-                    animate={{ opacity: 1, height: 'auto', y: 0 }}
+                    animate={{ opacity: 1, height: "auto", y: 0 }}
                     exit={{ opacity: 0, height: 0 }}
                     transition={{ duration: 0.2 }}
                     className={cn(
-                      'mb-2 p-3 rounded-lg border border-gray-700 relative overflow-hidden group',
-                      notification.read ? 'bg-gray-800/30' : 'bg-gray-800/60',
+                      "mb-2 p-3 rounded-lg border border-gray-700 relative overflow-hidden group",
+                      notification.isRead ? "bg-gray-800/30" : "bg-gray-800/60",
                     )}
                   >
-                    {!notification.read && (
+                    {!notification.isRead && (
                       <motion.div
                         className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500"
                         initial={{ scaleY: 0 }}
@@ -182,10 +207,11 @@ export function NotificationPanel({ onClose, onViewAll, userId }: NotificationPa
                         <div className="flex items-center mb-1">
                           <span
                             className={cn(
-                              'text-xs font-medium px-1.5 py-0.5 rounded-full mr-2',
-                              notification.type === 'message' && 'bg-green-500/20 text-green-300',
-                              notification.type === 'quest' && 'bg-purple-500/20 text-purple-300',
-                              notification.type === 'system' && 'bg-blue-500/20 text-blue-300',
+                              "text-xs font-medium px-1.5 py-0.5 rounded-full mr-2",
+                              notification.type === "message" && "bg-green-500/20 text-green-300",
+                              notification.type === "quest" && "bg-purple-500/20 text-purple-300",
+                              notification.type === "system" && "bg-blue-500/20 text-blue-300",
+                              notification.type === "connection" && "bg-yellow-500/20 text-yellow-300",
                             )}
                           >
                             {notification.type.charAt(0).toUpperCase() + notification.type.slice(1)}
@@ -195,11 +221,11 @@ export function NotificationPanel({ onClose, onViewAll, userId }: NotificationPa
                           </span>
                         </div>
                         <p className="text-sm text-white mb-1">{notification.title}</p>
-                        <p className="text-xs text-gray-400">{notification.message}</p>
+                        <p className="text-xs text-gray-400">{notification.content}</p>
                       </div>
 
                       <div className="absolute right-2 top-2 flex gap-1">
-                        {!notification.read && (
+                        {!notification.isRead && (
                           <Button
                             variant="ghost"
                             size="icon"
@@ -210,7 +236,7 @@ export function NotificationPanel({ onClose, onViewAll, userId }: NotificationPa
                             {markingId === notification.id ? (
                               <motion.div
                                 animate={{ rotate: 360 }}
-                                transition={{ duration: 1, repeat: Number.POSITIVE_INFINITY, ease: 'linear' }}
+                                transition={{ duration: 1, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
                               >
                                 <RefreshCw className="h-3 w-3" />
                               </motion.div>
@@ -229,7 +255,7 @@ export function NotificationPanel({ onClose, onViewAll, userId }: NotificationPa
                           {deletingId === notification.id ? (
                             <motion.div
                               animate={{ rotate: 360 }}
-                              transition={{ duration: 1, repeat: Number.POSITIVE_INFINITY, ease: 'linear' }}
+                              transition={{ duration: 1, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
                             >
                               <RefreshCw className="h-3 w-3" />
                             </motion.div>
@@ -253,7 +279,7 @@ export function NotificationPanel({ onClose, onViewAll, userId }: NotificationPa
           size="sm"
           className="text-xs text-gray-400 hover:text-white"
           onClick={handleMarkAllAsRead}
-          disabled={unreadCount === 0}
+          disabled={userUnreadCount === 0}
         >
           Mark all as read
         </Button>
@@ -269,5 +295,5 @@ export function NotificationPanel({ onClose, onViewAll, userId }: NotificationPa
         </Button>
       </div>
     </motion.div>
-  );
+  )
 }

@@ -1,593 +1,440 @@
-'use client';
+"use client"
 
-import type React from 'react';
-import { useState, useRef } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useToast } from '@/hooks/use-toast';
-import { Loader2, Check, Upload, X, Camera } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useRouter } from 'next/navigation';
+import type React from "react"
 
-interface UserSettings {
-  theme?: string;
-  notifications?: boolean;
-  language?: string;
-  compactView?: boolean;
-  emailNotifications?: boolean;
-  questNotifications?: boolean;
-  messageNotifications?: boolean;
-}
+import { useState, useRef, useEffect } from "react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { useToast } from "@/hooks/use-toast"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Badge } from "@/components/ui/badge"
+import { formatDistanceToNow } from "date-fns"
+import { Loader2, Save, Upload } from "lucide-react"
+import { useSocket } from "@/hooks/use-socket"
 
 interface UserSettingsFormProps {
-  userData: {
-    _id?: string;
-    id?: string;
-    userId?: string;
-    username: string;
-    bio?: string;
-    profilePicture?: string;
-    role?: string;
-    status?: string;
-    settings?: UserSettings;
-  };
+  user: {
+    _id: string
+    username: string
+    bio?: string
+    profilePicture?: string
+    role?: string
+    status?: string
+    lastActive?: Date
+    joinedDate?: Date
+    createdAt?: Date
+    updatedAt?: Date
+    settings?: {
+      theme?: string
+      notifications?: boolean
+      language?: string
+    }
+    connections?: string[]
+  }
 }
 
-export function UserSettingsForm({ userData }: UserSettingsFormProps) {
-  const userId = userData._id || userData.id || userData.userId;
-  const [username, setUsername] = useState(userData.username || '');
-  const [bio, setBio] = useState(userData.bio || '');
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [profileImage, setProfileImage] = useState<string>(
-    userData.profilePicture || `https://api.dicebear.com/7.x/initials/svg?seed=${userData.username}`
-  );
-  const [previewImage, setPreviewImage] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
+export default function UserSettingsForm({ user }: UserSettingsFormProps) {
+  const [bio, setBio] = useState(user.bio || "")
+  const [currentPassword, setCurrentPassword] = useState("")
+  const [newPassword, setNewPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [activeTab, setActiveTab] = useState("profile")
+  const [notificationsEnabled] = useState(user.settings?.notifications !== false)
+  const [darkMode] = useState(user.settings?.theme === "dark")
+  const [language] = useState(user.settings?.language || "en")
+  const [profilePicture, setProfilePicture] = useState(user.profilePicture || "")
+  const [isUploading, setIsUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const { toast } = useToast()
 
-  // Settings state
-  const [settings, setSettings] = useState<UserSettings>({
-    theme: userData.settings?.theme || 'dark',
-    notifications: userData.settings?.notifications !== false,
-    language: userData.settings?.language || 'en',
-    compactView: userData.settings?.compactView || false,
-    emailNotifications: userData.settings?.emailNotifications || false,
-    questNotifications: userData.settings?.questNotifications !== false,
-    messageNotifications: userData.settings?.messageNotifications !== false,
-  });
+  // Connect to socket to update online status
+  const { socket, isConnected } = useSocket(user._id, user.username)
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const { toast } = useToast();
-  const router = useRouter();
+  // Update user status based on socket connection
+  useEffect(() => {
+    if (socket && isConnected) {
+      socket.emit("set-status", "online")
+
+      // Set status to offline when user leaves
+      return () => {
+        socket.emit("set-status", "offline")
+      }
+    }
+  }, [socket, isConnected, user._id])
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    setSuccessMessage('');
+    e.preventDefault()
+    setIsSubmitting(true)
 
     try {
-      // Prepare the profile data
-      const profileData = {
-        bio,
-        ...(previewImage && { profilePicture: previewImage }),
-      };
-
-      // Call API to update profile
-      const response = await fetch(`/api/users/${userId}/profile`, {
-        method: 'PATCH',
+      const response = await fetch("/api/users/profile", {
+        method: "PATCH",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify(profileData),
-      });
+        body: JSON.stringify({
+          bio,
+          profilePicture,
+          settings: {
+            theme: darkMode ? "dark" : "light",
+            notifications: notificationsEnabled,
+            language,
+          },
+        }),
+      })
 
-      if (!response.ok) {
-        throw new Error('Failed to update profile');
+      if (response.ok) {
+        toast({
+          title: "Profile updated",
+          description: "Your profile has been updated successfully.",
+        })
+      } else {
+        const data = await response.json()
+        toast({
+          title: "Update failed",
+          description: data.message || "Failed to update profile. Please try again.",
+          variant: "destructive",
+        })
       }
-
-      // Update local state
-      if (previewImage) {
-        setProfileImage(previewImage);
-        setPreviewImage(null);
-      }
-
+    } catch (err) {
+      console.error("Error updating profile:", err)
       toast({
-        title: 'Profile updated',
-        description: 'Your profile has been updated successfully',
-        variant: 'default',
-      });
-
-      setSuccessMessage('Profile updated successfully');
-
-      // Refresh the page to show updated data
-      router.refresh();
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to update profile. Please try again.',
-        variant: 'destructive',
-      });
+        title: "Update failed",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      })
     } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(false)
     }
-  };
+  }
 
   const handlePasswordUpdate = async (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault()
 
     if (newPassword !== confirmPassword) {
       toast({
         title: "Passwords don't match",
-        description: 'New password and confirm password must match',
-        variant: 'destructive',
-      });
-      return;
+        description: "New password and confirmation password must match.",
+        variant: "destructive",
+      })
+      return
     }
 
-    setIsSubmitting(true);
-    setSuccessMessage('');
+    if (!currentPassword) {
+      toast({
+        title: "Current password required",
+        description: "Please enter your current password to update.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setIsSubmitting(true)
 
     try {
-      // Call API to update password
-      const response = await fetch(`/api/users/${userId}/password`, {
-        method: 'PATCH',
+      const response = await fetch("/api/users/password", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           currentPassword,
           newPassword,
         }),
-      });
+      })
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.message || 'Failed to update password');
+      if (response.ok) {
+        toast({
+          title: "Password updated",
+          description: "Your password has been updated successfully.",
+        })
+        setCurrentPassword("")
+        setNewPassword("")
+        setConfirmPassword("")
+      } else {
+        const data = await response.json()
+        toast({
+          title: "Update failed",
+          description: data.message || "Failed to update password. Please try again.",
+          variant: "destructive",
+        })
       }
-
+    } catch (err) {
+      console.error("Error updating password:", err)
       toast({
-        title: 'Password updated',
-        description: 'Your password has been updated successfully',
-        variant: 'default',
-      });
-
-      setSuccessMessage('Password updated successfully');
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: (error as Error).message || 'Failed to update password. Please try again.',
-        variant: 'destructive',
-      });
+        title: "Update failed",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      })
     } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(false)
     }
-  };
+  }
 
-  const handleSettingsUpdate = async () => {
-    setIsSubmitting(true);
-
-    try {
-      // Call API to update settings
-      const response = await fetch(`/api/users/${userId}/settings`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(settings),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update settings');
-      }
-
-      toast({
-        title: 'Settings updated',
-        description: 'Your preferences have been saved',
-        variant: 'default',
-      });
-
-      // Refresh the page to apply new settings
-      router.refresh();
-    } catch (error) {
-      console.error('Error updating settings:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to update settings. Please try again.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsSubmitting(false);
+  const handleProfilePictureClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click()
     }
-  };
+  }
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Check file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Profile picture must be less than 2MB.",
+        variant: "destructive",
+      })
+      return
+    }
 
     // Check file type
-    if (!file.type.startsWith('image/')) {
+    if (!file.type.startsWith("image/")) {
       toast({
-        title: 'Invalid file type',
-        description: 'Please upload an image file (JPEG, PNG, etc.)',
-        variant: 'destructive',
-      });
-      return;
+        title: "Invalid file type",
+        description: "Please upload an image file.",
+        variant: "destructive",
+      })
+      return
     }
 
-    // Check file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast({
-        title: 'File too large',
-        description: 'Please upload an image smaller than 5MB',
-        variant: 'destructive',
-      });
-      return;
-    }
+    setIsUploading(true)
 
-    setIsUploading(true);
+    try {
+      // Convert to base64
+      const reader = new FileReader()
+      reader.readAsDataURL(file)
+      reader.onload = async () => {
+        const base64data = reader.result as string
+        setProfilePicture(base64data)
 
-    // Create a preview URL
-    const reader = new FileReader();
-    reader.onload = () => {
-      setPreviewImage(reader.result as string);
-      setIsUploading(false);
-    };
-    reader.readAsDataURL(file);
-  };
+        // Update profile picture in database
+        const response = await fetch("/api/users/profile", {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            profilePicture: base64data,
+          }),
+        })
 
-  const triggerFileInput = () => {
-    fileInputRef.current?.click();
-  };
+        if (response.ok) {
+          toast({
+            title: "Profile picture updated",
+            description: "Your profile picture has been updated successfully.",
+          })
+        } else {
+          const data = await response.json()
+          toast({
+            title: "Update failed",
+            description: data.message || "Failed to update profile picture. Please try again.",
+            variant: "destructive",
+          })
+          // Revert to previous profile picture
+          setProfilePicture(user.profilePicture || "")
+        }
 
-  const cancelImageUpload = () => {
-    setPreviewImage(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
-
-  const handleCameraClick = async () => {
-    if (navigator.mediaDevices) {
-      try {
-        // Coba akses kamera
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        // Catatan: Implementasi kamera tidak lengkap di demo ini
-        stream.getTracks().forEach((track) => track.stop()); // Hentikan stream
-        toast({
-          title: 'Camera access',
-          description: 'Camera functionality is not fully implemented in this demo',
-        });
-      } catch {
-        toast({
-          title: 'Camera not available',
-          description: 'Could not access camera. Please check permissions or device support.',
-          variant: 'destructive',
-        });
+        setIsUploading(false)
       }
-    } else {
+    } catch (err) {
+      console.error("Error updating profile picture:", err)
       toast({
-        title: 'Camera not available',
-        description: "Your device or browser doesn't support camera access",
-        variant: 'destructive',
-      });
+        title: "Update failed",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      })
+      setIsUploading(false)
     }
-  };
+  }
 
   return (
-    <Tabs defaultValue="profile" className="w-full">
-      <TabsList className="grid grid-cols-3 bg-[#1a1f2e] border border-gray-700">
-        <TabsTrigger value="profile" className="data-[state=active]:bg-gray-800">
-          Profile
-        </TabsTrigger>
-        <TabsTrigger value="security" className="data-[state=active]:bg-gray-800">
-          Security
-        </TabsTrigger>
-        <TabsTrigger value="preferences" className="data-[state=active]:bg-gray-800">
-          Preferences
-        </TabsTrigger>
-      </TabsList>
+    <div>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid grid-cols-3 mb-6 relative">
+          <TabsTrigger value="profile">Profile</TabsTrigger>
+          <TabsTrigger value="security">Security</TabsTrigger>
+          <TabsTrigger value="preferences" disabled>
+            Preferences
+            <span className="absolute -top-2 right-2 bg-yellow-600 text-yellow-100 text-[10px] px-1 rounded">Soon</span>
+          </TabsTrigger>
+        </TabsList>
 
-      <TabsContent value="profile" className="mt-4">
-        <div className="bg-[#1a1f2e] border border-gray-700 rounded-lg p-6">
-          <h3 className="text-lg font-medium text-white mb-4">Profile Information</h3>
+        <TabsContent value="profile">
+          <form onSubmit={handleProfileUpdate} className="space-y-6">
+            <div className="flex flex-col items-center gap-4 mb-6">
+              <div className="relative">
+                <Avatar
+                  className="h-24 w-24 border-2 border-gray-700 cursor-pointer"
+                  onClick={handleProfilePictureClick}
+                >
+                  <AvatarImage src={profilePicture || "/placeholder.svg"} alt={user.username} />
+                  <AvatarFallback className="text-lg bg-gradient-to-br from-blue-600 to-purple-600 text-white">
+                    {user.username.substring(0, 2).toUpperCase()}
+                  </AvatarFallback>
 
-          {successMessage && (
-            <div className="mb-4 p-3 bg-green-900/20 border border-green-800 rounded-md flex items-center text-green-400">
-              <Check className="h-5 w-5 mr-2" />
-              {successMessage}
-            </div>
-          )}
-
-          <form onSubmit={handleProfileUpdate}>
-            <div className="space-y-6">
-              {/* Profile Picture Upload */}
-              <div className="space-y-2">
-                <Label htmlFor="profile-picture">Profile Picture</Label>
-                <div className="flex items-center gap-4">
-                  <div className="relative">
-                    <Avatar className="h-20 w-20 border-2 border-blue-500/30">
-                      <AvatarImage src={previewImage || profileImage} alt={username} className="object-cover" />
-                      <AvatarFallback className="bg-gradient-to-br from-blue-600 to-purple-600 text-white text-xl">
-                        {username.substring(0, 2).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-
-                    {isUploading && (
-                      <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
-                        <Loader2 className="h-6 w-6 text-white animate-spin" />
-                      </div>
+                  {/* Overlay for upload icon */}
+                  <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                    {isUploading ? (
+                      <Loader2 className="h-8 w-8 text-white animate-spin" />
+                    ) : (
+                      <Upload className="h-8 w-8 text-white" />
                     )}
                   </div>
+                </Avatar>
 
-                  <div className="space-y-2">
-                    <div className="flex gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={triggerFileInput}
-                        className="bg-gray-800 border-gray-700 hover:bg-gray-700"
-                      >
-                        <Upload className="h-4 w-4 mr-2" />
-                        Upload
-                      </Button>
-
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={handleCameraClick}
-                        className="bg-gray-800 border-gray-700 hover:bg-gray-700"
-                      >
-                        <Camera className="h-4 w-4 mr-2" />
-                        Camera
-                      </Button>
-                    </div>
-
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      id="profile-picture"
-                      accept="image/*"
-                      onChange={handleFileChange}
-                      className="hidden"
-                    />
-
-                    <p className="text-xs text-gray-400">Supported formats: JPEG, PNG, GIF. Max size: 5MB</p>
-                  </div>
-                </div>
-
-                {previewImage && (
-                  <div className="mt-2 flex items-center gap-2">
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="sm"
-                      onClick={cancelImageUpload}
-                      className="h-7 px-2"
-                    >
-                      <X className="h-4 w-4 mr-1" />
-                      Cancel
-                    </Button>
-                    <span className="text-xs text-blue-400">New profile picture selected</span>
-                  </div>
-                )}
+                {/* Hidden file input */}
+                <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
+              <div className="text-center">
+                <h2 className="text-xl font-medium text-white">{user.username}</h2>
+                <div className="flex items-center justify-center gap-2 mt-1">
+                  <Badge variant="outline" className="text-xs bg-gray-700/50 text-gray-300">
+                    {user.role || "member"}
+                  </Badge>
+                  <Badge
+                    variant="outline"
+                    className={`text-xs ${
+                      isConnected
+                        ? "bg-green-900/30 text-green-300 border-green-800"
+                        : user.status === "away"
+                          ? "bg-yellow-900/30 text-yellow-300 border-yellow-800"
+                          : "bg-gray-700/50 text-gray-300"
+                    }`}
+                  >
+                    {isConnected ? "online" : user.status || "offline"}
+                  </Badge>
+                </div>
+                <p className="text-xs text-gray-400 mt-1">
+                  Member since{" "}
+                  {user.joinedDate ? formatDistanceToNow(new Date(user.joinedDate), { addSuffix: true }) : "unknown"}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="username" className="text-white">Username</Label>
                 <Input
                   id="username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="bg-gray-800 border-gray-700"
-                  disabled={userData.role !== 'admin'}
+                  value={user.username}
+                  disabled
+                  className="bg-gray-900 border-gray-700 text-gray-200"
                 />
-                {userData.role !== 'admin' && (
-                  <p className="text-xs text-gray-500 mt-1">Only administrators can change their username</p>
-                )}
+                <p className="text-xs text-gray-500 mt-1">Username cannot be changed</p>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="bio">Bio</Label>
+              <div>
+                <Label htmlFor="bio" className="text-white">Bio</Label>
                 <Textarea
                   id="bio"
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
-                  placeholder="Tell us about yourself"
-                  className="bg-gray-800 border-gray-700 min-h-[100px]"
-                />
-              </div>
-
-              <div className="pt-4">
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    'Save Changes'
-                  )}
-                </Button>
-              </div>
-            </div>
-          </form>
-        </div>
-      </TabsContent>
-
-      <TabsContent value="security" className="mt-4">
-        <div className="bg-[#1a1f2e] border border-gray-700 rounded-lg p-6">
-          <h3 className="text-lg font-medium text-white mb-4">Change Password</h3>
-
-          {successMessage && (
-            <div className="mb-4 p-3 bg-green-900/20 border border-green-800 rounded-md flex items-center text-green-400">
-              <Check className="h-5 w-5 mr-2" />
-              {successMessage}
-            </div>
-          )}
-
-          <form onSubmit={handlePasswordUpdate}>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="current-password">Current Password</Label>
-                <Input
-                  id="current-password"
-                  type="password"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  className="bg-gray-800 border-gray-700"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="new-password">New Password</Label>
-                <Input
-                  id="new-password"
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="bg-gray-800 border-gray-700"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="confirm-password">Confirm New Password</Label>
-                <Input
-                  id="confirm-password"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="bg-gray-800 border-gray-700"
-                  required
-                />
-              </div>
-
-              <div className="pt-4">
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Updating...
-                    </>
-                  ) : (
-                    'Update Password'
-                  )}
-                </Button>
-              </div>
-            </div>
-          </form>
-        </div>
-      </TabsContent>
-
-      <TabsContent value="preferences" className="mt-4">
-        <div className="bg-[#1a1f2e] border border-gray-700 rounded-lg p-6">
-          <h3 className="text-lg font-medium text-white mb-4">Notification Settings</h3>
-
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="text-sm font-medium text-white">Enable Notifications</h4>
-                <p className="text-xs text-gray-400 mt-1">Receive notifications for messages and quests</p>
-              </div>
-              <Switch
-                checked={settings.notifications}
-                onCheckedChange={(checked) => setSettings({ ...settings, notifications: checked })}
-              />
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="text-sm font-medium text-white">Message Notifications</h4>
-                <p className="text-xs text-gray-400 mt-1">Get notified when you receive new messages</p>
-              </div>
-              <Switch
-                checked={settings.messageNotifications}
-                onCheckedChange={(checked) => setSettings({ ...settings, messageNotifications: checked })}
-                disabled={!settings.notifications}
-              />
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="text-sm font-medium text-white">Quest Notifications</h4>
-                <p className="text-xs text-gray-400 mt-1">Get notified when new quests are available</p>
-              </div>
-              <Switch
-                checked={settings.questNotifications}
-                onCheckedChange={(checked) => setSettings({ ...settings, questNotifications: checked })}
-                disabled={!settings.notifications}
-              />
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="text-sm font-medium text-white">Email Notifications</h4>
-                <p className="text-xs text-gray-400 mt-1">Receive email notifications for important updates</p>
-              </div>
-              <Switch
-                checked={settings.emailNotifications}
-                onCheckedChange={(checked) => setSettings({ ...settings, emailNotifications: checked })}
-                disabled={!settings.notifications}
-              />
-            </div>
-          </div>
-
-          <div className="mt-8">
-            <h3 className="text-lg font-medium text-white mb-4">Display Settings</h3>
-
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="text-sm font-medium text-white">Dark Mode</h4>
-                  <p className="text-xs text-gray-400 mt-1">Always use dark mode</p>
-                </div>
-                <Switch
-                  checked={settings.theme === 'dark'}
-                  onCheckedChange={(checked) => setSettings({ ...settings, theme: checked ? 'dark' : 'light' })}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="text-sm font-medium text-white">Compact View</h4>
-                  <p className="text-xs text-gray-400 mt-1">Use compact view for lists and tables</p>
-                </div>
-                <Switch
-                  checked={settings.compactView}
-                  onCheckedChange={(checked) => setSettings({ ...settings, compactView: checked })}
+                  className="bg-gray-900 border-gray-700 min-h-[100px] text-gray-200"
+                  placeholder="Tell us about yourself..."
                 />
               </div>
             </div>
-          </div>
 
-          <div className="mt-6 pt-4 border-t border-gray-700">
-            <Button onClick={handleSettingsUpdate} disabled={isSubmitting}>
+            <Button type="submit" disabled={isSubmitting} className="w-full">
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Saving...
                 </>
               ) : (
-                'Save Preferences'
+                <>
+                  <Save className="mr-2 h-4 w-4" />
+                  Save Changes
+                </>
               )}
             </Button>
+          </form>
+        </TabsContent>
+
+        <TabsContent value="security">
+          <form onSubmit={handlePasswordUpdate} className="space-y-6">
+            <div>
+              <Label htmlFor="current-password" className="text-white">Current Password</Label>
+              <Input
+                id="current-password"
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                className="bg-gray-900 border-gray-700 text-gray-200"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="new-password" className="text-white">New Password</Label>
+              <Input
+                id="new-password"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="bg-gray-900 border-gray-700 text-gray-200"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="confirm-password" className="text-white">Confirm New Password</Label>
+              <Input
+                id="confirm-password"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="bg-gray-900 border-gray-700 text-gray-200"
+              />
+            </div>
+
+            <Button type="submit" disabled={isSubmitting} className="w-full">
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Updating...
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 h-4 w-4" />
+                  Update Password
+                </>
+              )}
+            </Button>
+          </form>
+        </TabsContent>
+
+        <TabsContent value="preferences">
+          <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+            <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-8 max-w-md mx-auto">
+              <div className="bg-yellow-600/20 rounded-full p-3 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                <Loader2 className="h-8 w-8 text-yellow-500 animate-spin" />
+              </div>
+              <h3 className="text-xl font-semibold text-white mb-2">Preferences Coming Soon</h3>
+              <p className="text-gray-400 mb-6">
+                We&apos;re working hard to bring you customizable preferences. This feature will be available in the next
+                update.
+              </p>
+              <div className="text-sm text-gray-500 bg-gray-900/50 rounded-md p-3">
+                <p>Future features will include:</p>
+                <ul className="mt-2 space-y-1 list-disc list-inside">
+                  <li>Custom theme settings</li>
+                  <li>Notification preferences</li>
+                  <li>Language options</li>
+                  <li>Privacy controls</li>
+                </ul>
+              </div>
+            </div>
           </div>
-        </div>
-      </TabsContent>
-    </Tabs>
-  );
+        </TabsContent>
+      </Tabs>
+    </div>
+  )
 }

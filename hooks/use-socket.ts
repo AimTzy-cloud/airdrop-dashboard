@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import io, { type Socket } from "socket.io-client"
-import type { SocketMessage, SocketMessageUpdate, SocketTypingData, UserStatus } from "@/lib/types"
+import type { Notification, SocketMessage, SocketMessageUpdate, SocketTypingData, UserStatus } from "@/lib/types"
 
 // Socket event types
 interface ServerToClientEvents {
@@ -12,6 +12,7 @@ interface ServerToClientEvents {
   "user-status-change": (data: { userId: string; status: UserStatus }) => void
   "new-message": (message: SocketMessage) => void
   "message-update": (data: SocketMessageUpdate) => void
+  "new-notification": (notification: Partial<Notification>) => void
 }
 
 interface ClientToServerEvents {
@@ -21,6 +22,7 @@ interface ClientToServerEvents {
   "new-message": (message: SocketMessage) => void
   "message-update": (data: SocketMessageUpdate) => void
   "set-status": (status: UserStatus) => void
+  "join-notification-channel": (data: { userId: string }) => void
 }
 
 type SocketType = Socket<ServerToClientEvents, ClientToServerEvents>

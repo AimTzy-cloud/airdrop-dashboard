@@ -1,95 +1,87 @@
-'use client';
+"use client"
 
-import { useState, useEffect } from 'react';
-import { Bell } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useNotificationStore } from '@/lib/notification-service';
-import type { Notification } from '@/lib/notification-service';
+import { useState, useEffect } from "react"
+import { Bell } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { motion, AnimatePresence } from "framer-motion"
+import { cn } from "@/lib/utils"
+import { useNotificationStore } from "@/lib/notification-store"
+import { getUnreadNotificationsCount } from "@/lib/notification-service"
+import type { Notification } from "@/lib/types"
 
 interface NotificationBadgeProps {
-  onClick?: () => void;
-  userId: string; // Hapus default user123
+  onClick?: () => void
+  userId: string
 }
 
 export function NotificationBadge({ onClick, userId }: NotificationBadgeProps) {
-  const { notifications, fetchNotifications } = useNotificationStore();
-  const [isLoading, setIsLoading] = useState(false);
-  const [hasAnimated, setHasAnimated] = useState(false);
+  const { notifications } = useNotificationStore()
+  const [isLoading, setIsLoading] = useState(false)
+  const [localUnreadCount, setLocalUnreadCount] = useState(0)
 
-  // Count unread notifications
-  const unreadCount = notifications.filter((n: Notification) => !n.read && n.userId === userId).length;
+  // Filter notifications for this user and count unread
+  const userUnreadCount = notifications.filter((n: Notification) => n.userId === userId && !n.isRead).length
 
-  useEffect(() => {
-    const loadNotifications = async () => {
-      if (isLoading) return; // Cegah fetch ganda
-      setIsLoading(true);
-      console.log(`NotificationBadge fetching notifications for userId: ${userId}`);
-      try {
-        await fetchNotifications(userId);
-      } catch (error) {
-        console.error('Failed to fetch notifications:', error);
-      } finally {
-        setIsLoading(false);
+  // Fetch unread count from API
+  const fetchUnreadCount = async () => {
+    if (!userId) return
+
+    setIsLoading(true)
+    try {
+      const response = await getUnreadNotificationsCount(userId)
+      if (response.success && typeof response.data === "number") {
+        setLocalUnreadCount(response.data)
       }
-    };
-
-    loadNotifications();
-
-    // Polling setiap 30 detik
-    const interval = setInterval(loadNotifications, 30000);
-
-    return () => clearInterval(interval);
-  }, [fetchNotifications, userId]);
-
-  useEffect(() => {
-    if (unreadCount > 0 && !hasAnimated) {
-      setHasAnimated(true);
-    } else if (unreadCount === 0) {
-      setHasAnimated(false);
+    } catch (error) {
+      console.error("Failed to fetch unread count:", error)
+    } finally {
+      setIsLoading(false)
     }
-  }, [unreadCount, hasAnimated]);
+  }
+
+  // Fetch unread count on mount and when userId changes
+  useEffect(() => {
+    fetchUnreadCount()
+
+    // Set up polling for unread count (every 30 seconds)
+    const intervalId = setInterval(fetchUnreadCount, 30000)
+
+    return () => clearInterval(intervalId)
+  }, [userId])
+
+  // Use the greater of local count or store count
+  const displayCount = Math.max(userUnreadCount, localUnreadCount)
 
   return (
     <Button
       variant="ghost"
       size="icon"
-      className="text-gray-400 hover:text-white relative"
+      className={cn("relative text-gray-400 hover:text-white", displayCount > 0 && "text-blue-400 hover:text-blue-300")}
       onClick={onClick}
-      disabled={isLoading}
     >
       {isLoading ? (
         <motion.div
           animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Number.POSITIVE_INFINITY, ease: 'linear' }}
+          transition={{ duration: 1, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
         >
-          <Bell className="h-5 w-5 opacity-70" />
+          <Bell className="h-5 w-5" />
         </motion.div>
       ) : (
         <Bell className="h-5 w-5" />
       )}
 
       <AnimatePresence>
-        {unreadCount > 0 && (
+        {displayCount > 0 && (
           <motion.div
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{
-              scale: [1, 1.2, 1],
-              opacity: 1,
-              transition: {
-                scale: { repeat: hasAnimated ? 0 : 3, duration: 0.3 },
-                opacity: { duration: 0.2 },
-              },
-            }}
-            exit={{ scale: 0, opacity: 0 }}
-            className="absolute top-1 right-1 flex items-center justify-center"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            exit={{ scale: 0 }}
+            className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] rounded-full bg-red-500 text-[10px] font-medium text-white"
           >
-            <span className="flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
-              {unreadCount > 9 ? '9+' : unreadCount}
-            </span>
+            {displayCount > 99 ? "99+" : displayCount}
           </motion.div>
         )}
       </AnimatePresence>
     </Button>
-  );
+  )
 }
