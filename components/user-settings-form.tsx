@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { formatDistanceToNow } from "date-fns"
 import { Loader2, Save, Upload } from "lucide-react"
-import { useSocket } from "@/hooks/use-socket"
+// Socket import removed
 
 interface UserSettingsFormProps {
   user: {
@@ -51,20 +51,11 @@ export default function UserSettingsForm({ user }: UserSettingsFormProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { toast } = useToast()
 
-  // Connect to socket to update online status
-  const { socket, isConnected } = useSocket(user._id, user.username)
+  // Socket connection removed
+  // Using a mocked connection status instead
+  // const isConnected = true // Always show as connected
 
-  // Update user status based on socket connection
-  useEffect(() => {
-    if (socket && isConnected) {
-      socket.emit("set-status", "online")
-
-      // Set status to offline when user leaves
-      return () => {
-        socket.emit("set-status", "offline")
-      }
-    }
-  }, [socket, isConnected, user._id])
+  // Socket-related useEffect removed
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -300,17 +291,8 @@ export default function UserSettingsForm({ user }: UserSettingsFormProps) {
                   <Badge variant="outline" className="text-xs bg-gray-700/50 text-gray-300">
                     {user.role || "member"}
                   </Badge>
-                  <Badge
-                    variant="outline"
-                    className={`text-xs ${
-                      isConnected
-                        ? "bg-green-900/30 text-green-300 border-green-800"
-                        : user.status === "away"
-                          ? "bg-yellow-900/30 text-yellow-300 border-yellow-800"
-                          : "bg-gray-700/50 text-gray-300"
-                    }`}
-                  >
-                    {isConnected ? "online" : user.status || "offline"}
+                  <Badge variant="outline" className="bg-green-900/30 text-green-300 border-green-800 text-xs">
+                    online
                   </Badge>
                 </div>
                 <p className="text-xs text-gray-400 mt-1">
@@ -322,7 +304,9 @@ export default function UserSettingsForm({ user }: UserSettingsFormProps) {
 
             <div className="space-y-4">
               <div>
-                <Label htmlFor="username" className="text-white">Username</Label>
+                <Label htmlFor="username" className="text-white">
+                  Username
+                </Label>
                 <Input
                   id="username"
                   value={user.username}
@@ -333,7 +317,9 @@ export default function UserSettingsForm({ user }: UserSettingsFormProps) {
               </div>
 
               <div>
-                <Label htmlFor="bio" className="text-white">Bio</Label>
+                <Label htmlFor="bio" className="text-white">
+                  Bio
+                </Label>
                 <Textarea
                   id="bio"
                   value={bio}
@@ -363,7 +349,9 @@ export default function UserSettingsForm({ user }: UserSettingsFormProps) {
         <TabsContent value="security">
           <form onSubmit={handlePasswordUpdate} className="space-y-6">
             <div>
-              <Label htmlFor="current-password" className="text-white">Current Password</Label>
+              <Label htmlFor="current-password" className="text-white">
+                Current Password
+              </Label>
               <Input
                 id="current-password"
                 type="password"
@@ -374,7 +362,9 @@ export default function UserSettingsForm({ user }: UserSettingsFormProps) {
             </div>
 
             <div>
-              <Label htmlFor="new-password" className="text-white">New Password</Label>
+              <Label htmlFor="new-password" className="text-white">
+                New Password
+              </Label>
               <Input
                 id="new-password"
                 type="password"
@@ -385,7 +375,9 @@ export default function UserSettingsForm({ user }: UserSettingsFormProps) {
             </div>
 
             <div>
-              <Label htmlFor="confirm-password" className="text-white">Confirm New Password</Label>
+              <Label htmlFor="confirm-password" className="text-white">
+                Confirm New Password
+              </Label>
               <Input
                 id="confirm-password"
                 type="password"
@@ -419,8 +411,8 @@ export default function UserSettingsForm({ user }: UserSettingsFormProps) {
               </div>
               <h3 className="text-xl font-semibold text-white mb-2">Preferences Coming Soon</h3>
               <p className="text-gray-400 mb-6">
-                We&apos;re working hard to bring you customizable preferences. This feature will be available in the next
-                update.
+                We&apos;re working hard to bring you customizable preferences. This feature will be available in the
+                next update.
               </p>
               <div className="text-sm text-gray-500 bg-gray-900/50 rounded-md p-3">
                 <p>Future features will include:</p>

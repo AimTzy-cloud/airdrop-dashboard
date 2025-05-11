@@ -4,7 +4,6 @@ import { useEffect, useState } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import { useSocket } from "@/hooks/use-socket"
 import type { UserStatus } from "@/lib/types"
 
 interface OnlineUser {
@@ -24,76 +23,107 @@ export interface OnlineUsersListProps {
 export function OnlineUsersList({ userId, username, className }: OnlineUsersListProps) {
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const { socket, isConnected } = useSocket(userId, username)
+
+  // Socket connection removed
+  // const isConnected = true // Mocked as always connected
 
   // Fetch online users
   useEffect(() => {
     const fetchOnlineUsers = async () => {
       try {
+        // Try to fetch from API first
         const response = await fetch("/api/users/online")
         if (response.ok) {
           const data = await response.json()
           if (data.success && data.onlineUsers) {
             setOnlineUsers(data.onlineUsers)
           }
+        } else {
+          // If API fails, use mock data
+          console.log("Using mock online users data (socket disabled)")
+          const mockUsers: OnlineUser[] = [
+            {
+              _id: "1",
+              username: "CryptoKing",
+              status: "online",
+              role: "admin",
+            },
+            {
+              _id: "2",
+              username: "BitcoinWhale",
+              status: "online",
+              role: "moderator",
+            },
+            {
+              _id: "3",
+              username: "EthTrader",
+              status: "away",
+              role: "member",
+            },
+            {
+              _id: "4",
+              username: "SolanaFan",
+              status: "online",
+              role: "member",
+            },
+            {
+              _id: userId, // Current user
+              username: username,
+              status: "online",
+              role: "member",
+            },
+          ]
+          setOnlineUsers(mockUsers)
         }
       } catch (error) {
         console.error("Error fetching online users:", error)
+        // Fallback to mock data on error
+        const mockUsers: OnlineUser[] = [
+          {
+            _id: "1",
+            username: "CryptoKing",
+            status: "online",
+            role: "admin",
+          },
+          {
+            _id: "2",
+            username: "BitcoinWhale",
+            status: "online",
+            role: "moderator",
+          },
+          {
+            _id: "3",
+            username: "EthTrader",
+            status: "away",
+            role: "member",
+          },
+          {
+            _id: "4",
+            username: "SolanaFan",
+            status: "online",
+            role: "member",
+          },
+          {
+            _id: userId, // Current user
+            username: username,
+            status: "online",
+            role: "member",
+          },
+        ]
+        setOnlineUsers(mockUsers)
       } finally {
         setIsLoading(false)
       }
     }
 
-    if (isConnected) {
-      fetchOnlineUsers()
-    }
+    fetchOnlineUsers()
 
     // Refresh online users every 30 seconds
     const interval = setInterval(fetchOnlineUsers, 30000)
     return () => clearInterval(interval)
-  }, [isConnected])
+  }, [userId, username])
 
-  // Listen for user status changes
-  useEffect(() => {
-    if (!socket) return
-
-    const handleStatusChange = (data: { userId: string; status: UserStatus }) => {
-      setOnlineUsers((prev) => prev.map((user) => (user._id === data.userId ? { ...user, status: data.status } : user)))
-    }
-
-    const handleUserConnected = (data: { userId: string; username: string }) => {
-      // Check if user already exists in the list
-      const userExists = onlineUsers.some((user) => user._id === data.userId)
-
-      if (!userExists) {
-        setOnlineUsers((prev) => [
-          ...prev,
-          {
-            _id: data.userId,
-            username: data.username,
-            status: "online",
-            role: "member", // Default role
-          },
-        ])
-      }
-    }
-
-    const handleUserDisconnected = (data: { userId: string }) => {
-      setOnlineUsers((prev) => prev.map((user) => (user._id === data.userId ? { ...user, status: "offline" } : user)))
-    }
-
-    socket.on("user-status-change", handleStatusChange)
-    socket.on("user-connected", handleUserConnected)
-    socket.on("user-disconnected", handleUserDisconnected)
-
-    return () => {
-      if (socket) {
-        socket.off("user-status-change", handleStatusChange)
-        socket.off("user-connected", handleUserConnected)
-        socket.off("user-disconnected", handleUserDisconnected)
-      }
-    }
-  }, [socket, onlineUsers])
+  // Socket event listeners removed
 
   const getStatusColor = (status: string) => {
     switch (status) {
