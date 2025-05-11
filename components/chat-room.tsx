@@ -4,7 +4,7 @@ import type React from "react"
 import { useState, useRef, useEffect, useCallback } from "react"
 import { sendMessage } from "@/lib/community-actions"
 
-import type { MessageData, MessageReaction, SocketMessage, UserStatus, MessageAttachment } from "@/lib/types"
+import type { MessageData, MessageReaction, MessageAttachment } from "@/lib/types"
 import { formatDistanceToNow } from "date-fns"
 import { AnimatePresence, motion } from "framer-motion"
 import {
@@ -68,7 +68,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Slider } from "@/components/ui/slider"
 import { OnlineUsersList } from "./online-users-list"
-import { useSocket } from "@/hooks/use-socket"
+// Socket import removed
 
 interface ChatRoomProps {
   roomId: string
@@ -130,10 +130,10 @@ export default function ChatRoom({ roomId, userId, username, initialMessages }: 
   const [selectedCrypto, setSelectedCrypto] = useState<CryptoType>("BTC")
   const [cryptoAmount, setCryptoAmount] = useState<number>(0.001)
   const [showEncryptionBanner, setShowEncryptionBanner] = useState(true)
-  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  // const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Initialize socket with useSocket
-  const { socket, isConnected } = useSocket(userId, username)
+  // Socket connection status (mocked)
+  const isConnected = true
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -231,89 +231,7 @@ export default function ChatRoom({ roomId, userId, username, initialMessages }: 
     }
   }, [searchQuery, messages])
 
-  // Handle Socket.IO events
-  useEffect(() => {
-    if (!socket) return
-
-    const handleTyping = (data: { userId: string; username: string; isTyping: boolean }) => {
-      if (data.isTyping) {
-        setTypingUsers((prev) => (prev.includes(data.username) ? prev : [...prev, data.username]))
-        setTimeout(() => {
-          setTypingUsers((prev) => prev.filter((username) => username !== data.username))
-        }, 3000)
-      } else {
-        setTypingUsers((prev) => prev.filter((username) => username !== data.username))
-      }
-    }
-
-    const handleStatusChange = (data: { userId: string; status: UserStatus }) => {
-      console.log("User status changed:", data)
-    }
-
-    const handleUserConnected = (data: { userId: string; username: string }) => {
-      console.log("User connected:", data)
-      toast({
-        title: `${data.username} joined`,
-        description: "They are now online",
-      })
-    }
-
-    const handleUserDisconnected = (data: { userId: string; username: string }) => {
-      console.log("User disconnected:", data)
-      toast({
-        title: `${data.username} left`,
-        description: "They are now offline",
-      })
-    }
-
-    const handleNewMessage = (message: SocketMessage) => {
-      setMessages((prev) => [
-        ...prev,
-        {
-          ...message,
-          status: "read" as MessageStatus,
-          reactions: message.reactions || [],
-          replyToMessage: message.replyToMessage || null,
-          isVoiceMessage: message.isVoiceMessage || false,
-          voiceDuration: message.voiceDuration,
-          cryptoTransaction: message.cryptoTransaction,
-        } as EnhancedMessageData,
-      ])
-    }
-
-    const handleMessageUpdate = (data: { messageId: string; update: Partial<SocketMessage> }) => {
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg._id === data.messageId
-            ? ({
-                ...msg,
-                content: data.update.content ?? msg.content,
-                isDeleted: data.update.isDeleted ?? msg.isDeleted,
-                reactions: data.update.reactions ?? msg.reactions,
-                status: data.update.deliveryStatus ?? msg.status,
-                attachments: data.update.attachments ?? msg.attachments,
-              } as EnhancedMessageData)
-            : msg,
-        ),
-      )
-    }
-
-    socket.on("user-typing", handleTyping)
-    socket.on("user-status-change", handleStatusChange)
-    socket.on("user-connected", handleUserConnected)
-    socket.on("user-disconnected", handleUserDisconnected)
-    socket.on("new-message", handleNewMessage)
-    socket.on("message-update", handleMessageUpdate)
-
-    return () => {
-      socket.off("user-typing", handleTyping)
-      socket.off("user-status-change", handleStatusChange)
-      socket.off("user-connected", handleUserConnected)
-      socket.off("user-disconnected", handleUserDisconnected)
-      socket.off("new-message", handleNewMessage)
-      socket.off("message-update", handleMessageUpdate)
-    }
-  }, [socket, toast])
+  // Socket event handlers removed
 
   // Format time for voice messages
   const formatTime = (seconds: number) => {
@@ -405,10 +323,7 @@ export default function ChatRoom({ roomId, userId, username, initialMessages }: 
 
           setMessages((prev) => [...prev, enhancedMessage])
 
-          // Emit new-message via socket
-          if (socket) {
-            socket.emit("new-message", enhancedMessage as SocketMessage)
-          }
+          // Socket emit removed
 
           setTimeout(() => {
             setMessages((prev) => prev.map((msg) => (msg._id === messageId ? { ...msg, status: "sent" } : msg)))
@@ -494,10 +409,7 @@ export default function ChatRoom({ roomId, userId, username, initialMessages }: 
 
           setMessages((prev) => [...prev, enhancedMessage])
 
-          // Emit new-message via socket
-          if (socket) {
-            socket.emit("new-message", enhancedMessage as SocketMessage)
-          }
+          // Socket emit removed
 
           toast({
             title: "Transaction Initiated",
@@ -626,10 +538,7 @@ export default function ChatRoom({ roomId, userId, username, initialMessages }: 
 
           setMessages((prev) => [...prev, enhancedMessage])
 
-          // Emit new-message via socket
-          if (socket) {
-            socket.emit("new-message", enhancedMessage as SocketMessage)
-          }
+          // Socket emit removed
 
           setTimeout(() => {
             setMessages((prev) => prev.map((msg) => (msg._id === messageId ? { ...msg, status: "sent" } : msg)))
@@ -674,27 +583,16 @@ export default function ChatRoom({ roomId, userId, username, initialMessages }: 
       handleSendMessage()
     }
 
-    // Emit user-typing event via socket
-    if (socket && e.key !== "Enter") {
-      socket.emit("typing", {
-        userId,
-        username,
-        roomId,
-        isTyping: true,
-      })
-
-      // Clear typing status after 3 seconds
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current)
+    // Typing indicator simulation (socket removed)
+    if (e.key !== "Enter") {
+      // Simulate typing indicator for demo purposes
+      const randomUser = ["Alice", "Bob", "Charlie"][Math.floor(Math.random() * 3)]
+      if (Math.random() > 0.7 && !typingUsers.includes(randomUser)) {
+        setTypingUsers((prev) => [...prev, randomUser])
+        setTimeout(() => {
+          setTypingUsers((prev) => prev.filter((user) => user !== randomUser))
+        }, 3000)
       }
-      typingTimeoutRef.current = setTimeout(() => {
-        socket.emit("typing", {
-          userId,
-          username,
-          roomId,
-          isTyping: false,
-        })
-      }, 3000)
     }
   }
 
@@ -758,10 +656,7 @@ export default function ChatRoom({ roomId, userId, username, initialMessages }: 
               ...(msg.reactions || []),
               { userId, username, type: reaction, timestamp: new Date() },
             ]
-            // Emit message-update via socket
-            if (socket) {
-              socket.emit("message-update", { messageId, update: { reactions: updatedReactions } })
-            }
+            // Socket emit removed
             return { ...msg, reactions: updatedReactions }
           }
         }
@@ -775,13 +670,7 @@ export default function ChatRoom({ roomId, userId, username, initialMessages }: 
     setMessages((prev) =>
       prev.map((msg) => {
         if (msg._id === messageId) {
-          // Emit message-update via socket
-          if (socket) {
-            socket.emit("message-update", {
-              messageId,
-              update: { content: "This message was deleted", isDeleted: true },
-            })
-          }
+          // Socket emit removed
           return { ...msg, content: "This message was deleted", isDeleted: true } as EnhancedMessageData
         }
         return msg
@@ -827,42 +716,6 @@ export default function ChatRoom({ roomId, userId, username, initialMessages }: 
       default:
         return null
     }
-  }
-
-  // Generate a demo message with attachment for testing
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const generateDemoMessageWithAttachment = (type: "image" | "video" | "document" | "sticker") => {
-    const demoAttachment: MessageAttachment = {
-      type,
-      url:
-        type === "image"
-          ? "/demo-image.jpg"
-          : type === "video"
-            ? "/demo-video.mp4"
-            : type === "document"
-              ? "/demo-document.pdf"
-              : "/demo-sticker.webp",
-      name: `Demo ${type}`,
-      size: 1024 * 1024, // 1MB
-      mimeType:
-        type === "image"
-          ? "image/jpeg"
-          : type === "video"
-            ? "video/mp4"
-            : type === "document"
-              ? "application/pdf"
-              : "image/webp",
-    }
-
-    if (type === "image" || type === "video") {
-      demoAttachment.dimensions = { width: 800, height: 600 }
-    }
-
-    if (type === "video") {
-      demoAttachment.duration = 30
-    }
-
-    return demoAttachment
   }
 
   // Parse message content for special formats
