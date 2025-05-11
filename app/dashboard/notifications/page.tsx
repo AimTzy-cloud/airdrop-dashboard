@@ -30,6 +30,37 @@ interface Notification {
   createdAt: string;
 }
 
+// Data dummy untuk simulasi tanpa API
+const dummyNotifications: Notification[] = [
+  {
+    _id: "1",
+    type: "message",
+    title: "New Message",
+    content: "You have a new message from John.",
+    sourceId: "john123",
+    isRead: false,
+    createdAt: new Date().toISOString(),
+  },
+  {
+    _id: "2",
+    type: "quest",
+    title: "Quest Update",
+    content: "Your quest has been updated.",
+    sourceId: "quest123",
+    isRead: true,
+    createdAt: new Date().toISOString(),
+  },
+  {
+    _id: "3",
+    type: "connection",
+    title: "New Connection",
+    content: "You have a new connection request.",
+    sourceId: "user456",
+    isRead: false,
+    createdAt: new Date().toISOString(),
+  },
+];
+
 export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -40,84 +71,34 @@ export default function NotificationsPage() {
 
   useEffect(() => {
     setActiveTab(initialTab);
-    fetchNotifications(initialTab);
-  }, [initialTab]);
+    // Memuat data dummy alih-alih memanggil API
+    fetchDummyNotifications(initialTab);
+  }, []); // Menghapus ketergantungan pada initialTab agar hanya dipanggil sekali
 
-  const fetchNotifications = async (type: string) => {
-    try {
-      setIsLoading(true);
-      const queryParam = type !== "all" ? `?type=${type}` : "";
-      const response = await fetch(`/api/notifications${queryParam}`);
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && Array.isArray(data.notifications)) {
-          setNotifications(data.notifications);
-        } else {
-          setNotifications([]); // Default ke array kosong jika data tidak valid
-        }
-      } else {
-        setNotifications([]); // Default ke array kosong jika respons gagal
-      }
-    } catch (error) {
-      console.error("Error fetching notifications:", error);
-      setNotifications([]); // Default ke array kosong pada error
-    } finally {
-      setIsLoading(false);
-    }
+  const fetchDummyNotifications = (type: string) => {
+    setIsLoading(true);
+    // Filter dummy data berdasarkan tipe
+    const filteredNotifications =
+      type === "all" ? dummyNotifications : dummyNotifications.filter((n) => n.type === type);
+    setNotifications(filteredNotifications);
+    setIsLoading(false);
   };
 
   const markAsRead = async (id: string) => {
-    try {
-      const response = await fetch(`/api/notifications/${id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ isRead: true }),
-      });
-
-      if (response.ok) {
-        setNotifications((prev) =>
-          prev.map((notification) => (notification._id === id ? { ...notification, isRead: true } : notification)),
-        );
-      }
-    } catch (error) {
-      console.error("Error marking notification as read:", error);
-    }
+    // Simulasi mark as read tanpa API
+    setNotifications((prev) =>
+      prev.map((notification) => (notification._id === id ? { ...notification, isRead: true } : notification))
+    );
   };
 
   const deleteNotification = async (id: string) => {
-    try {
-      const response = await fetch(`/api/notifications/${id}`, {
-        method: "DELETE",
-      });
-
-      if (response.ok) {
-        setNotifications((prev) => prev.filter((notification) => notification._id !== id));
-      }
-    } catch (error) {
-      console.error("Error deleting notification:", error);
-    }
+    // Simulasi delete tanpa API
+    setNotifications((prev) => prev.filter((notification) => notification._id !== id));
   };
 
   const markAllAsRead = async () => {
-    try {
-      const type = activeTab !== "all" ? activeTab : undefined;
-      const response = await fetch("/api/notifications/mark-all-read", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ type }),
-      });
-
-      if (response.ok) {
-        setNotifications((prev) => prev.map((notification) => ({ ...notification, isRead: true })));
-      }
-    } catch (error) {
-      console.error("Error marking all notifications as read:", error);
-    }
+    // Simulasi mark all as read tanpa API
+    setNotifications((prev) => prev.map((notification) => ({ ...notification, isRead: true })));
   };
 
   const handleNotificationClick = (notification: Notification) => {
@@ -164,7 +145,7 @@ export default function NotificationsPage() {
 
   const getUnreadCount = (type: string) => {
     if (!Array.isArray(notifications)) {
-      return 0; // Kembalikan 0 jika notifications bukan array
+      return 0;
     }
     if (type === "all") {
       return notifications.filter((n) => !n.isRead).length;
@@ -194,31 +175,46 @@ export default function NotificationsPage() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="bg-slate-900 border-slate-700">
                 <DropdownMenuItem
-                  onClick={() => router.push("/dashboard/notifications?type=all")}
+                  onClick={() => {
+                    setActiveTab("all");
+                    fetchDummyNotifications("all");
+                  }}
                   className="hover:bg-slate-800"
                 >
                   All
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  onClick={() => router.push("/dashboard/notifications?type=message")}
+                  onClick={() => {
+                    setActiveTab("message");
+                    fetchDummyNotifications("message");
+                  }}
                   className="hover:bg-slate-800"
                 >
                   Messages
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  onClick={() => router.push("/dashboard/notifications?type=quest")}
+                  onClick={() => {
+                    setActiveTab("quest");
+                    fetchDummyNotifications("quest");
+                  }}
                   className="hover:bg-slate-800"
                 >
                   Quests
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  onClick={() => router.push("/dashboard/notifications?type=connection")}
+                  onClick={() => {
+                    setActiveTab("connection");
+                    fetchDummyNotifications("connection");
+                  }}
                   className="hover:bg-slate-800"
                 >
                   Connections
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  onClick={() => router.push("/dashboard/notifications?type=system")}
+                  onClick={() => {
+                    setActiveTab("system");
+                    fetchDummyNotifications("system");
+                  }}
                   className="hover:bg-slate-800"
                 >
                   System
@@ -243,7 +239,10 @@ export default function NotificationsPage() {
               <TabsList className="grid grid-cols-5 bg-slate-800/50 p-1">
                 <TabsTrigger
                   value="all"
-                  onClick={() => router.push("/dashboard/notifications?type=all")}
+                  onClick={() => {
+                    setActiveTab("all");
+                    fetchDummyNotifications("all");
+                  }}
                   className="data-[state=active]:bg-slate-700 relative"
                 >
                   All
@@ -255,7 +254,10 @@ export default function NotificationsPage() {
                 </TabsTrigger>
                 <TabsTrigger
                   value="message"
-                  onClick={() => router.push("/dashboard/notifications?type=message")}
+                  onClick={() => {
+                    setActiveTab("message");
+                    fetchDummyNotifications("message");
+                  }}
                   className="data-[state=active]:bg-slate-700 relative"
                 >
                   Messages
@@ -267,7 +269,10 @@ export default function NotificationsPage() {
                 </TabsTrigger>
                 <TabsTrigger
                   value="quest"
-                  onClick={() => router.push("/dashboard/notifications?type=quest")}
+                  onClick={() => {
+                    setActiveTab("quest");
+                    fetchDummyNotifications("quest");
+                  }}
                   className="data-[state=active]:bg-slate-700 relative"
                 >
                   Quests
@@ -279,7 +284,10 @@ export default function NotificationsPage() {
                 </TabsTrigger>
                 <TabsTrigger
                   value="connection"
-                  onClick={() => router.push("/dashboard/notifications?type=connection")}
+                  onClick={() => {
+                    setActiveTab("connection");
+                    fetchDummyNotifications("connection");
+                  }}
                   className="data-[state=active]:bg-slate-700 relative"
                 >
                   Connections
@@ -291,7 +299,10 @@ export default function NotificationsPage() {
                 </TabsTrigger>
                 <TabsTrigger
                   value="system"
-                  onClick={() => router.push("/dashboard/notifications?type=system")}
+                  onClick={() => {
+                    setActiveTab("system");
+                    fetchDummyNotifications("system");
+                  }}
                   className="data-[state=active]:bg-slate-700 relative"
                 >
                   System
