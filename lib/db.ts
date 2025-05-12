@@ -23,6 +23,10 @@ if (!global.mongooseConnection) {
   }
 }
 
+// Maximum number of retries for database connection
+const MAX_RETRIES = 3
+const RETRY_DELAY = 1000 // 1 second
+
 export async function connectToDatabase() {
   if (global.mongooseConnection.conn) {
     return global.mongooseConnection.conn
@@ -31,14 +35,33 @@ export async function connectToDatabase() {
   if (!global.mongooseConnection.promise) {
     const opts = {
       bufferCommands: false,
+      serverSelectionTimeoutMS: 5000, // 5 seconds timeout for server selection
+      socketTimeoutMS: 45000, // 45 seconds timeout for operations
+      connectTimeoutMS: 10000, // 10 seconds timeout for initial connection
+      maxPoolSize: 10, // Maximum number of connections in the pool
+      minPoolSize: 5, // Minimum number of connections in the pool
+      retryWrites: true,
+      retryReads: true,
     }
 
-    global.mongooseConnection.promise = mongoose
-      .connect(MONGODB_URI, opts)
-      .then((mongooseInstance: typeof mongoose) => {
+    let retries = 0
+    const connectWithRetry = async () => {
+      try {
+        const mongooseInstance = await mongoose.connect(MONGODB_URI, opts)
         console.log("Connected to MongoDB")
         return mongooseInstance
-      })
+      } catch (error) {
+        if (retries < MAX_RETRIES) {
+          retries++
+          console.log(`MongoDB connection attempt ${retries} failed. Retrying in ${RETRY_DELAY}ms...`)
+          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY))
+          return connectWithRetry()
+        }
+        throw error
+      }
+    }
+
+    global.mongooseConnection.promise = connectWithRetry()
   }
 
   try {
