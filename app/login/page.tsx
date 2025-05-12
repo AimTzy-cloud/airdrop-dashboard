@@ -1,12 +1,14 @@
 "use client"
 
 import type React from "react"
+
 import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { loginUser } from "@/lib/auth-actions"
 import { Github, Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -25,13 +27,8 @@ export default function LoginPage() {
     setError("")
 
     try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-      });
-      const result = await response.json();
-      console.log("Login result:", result);
+      const result = await loginUser(username, password)
+      console.log("Login result:", result)
 
       if (result.success) {
         toast({
@@ -39,6 +36,7 @@ export default function LoginPage() {
           description: "Login successful",
           variant: "default",
         })
+        // Force a hard navigation instead of client-side navigation
         window.location.href = "/dashboard"
       } else {
         setError(result.message || "Login failed")
