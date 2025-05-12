@@ -71,7 +71,7 @@ async function StatsCards({ userId }: { userId: string }) {
     (airdrop) => airdrop.completed && airdrop.updatedAt && new Date(airdrop.updatedAt) >= oneDayAgo,
   ).length
 
-  // Calculate daily completion percentage
+  // Calculate daily completion percentag
   const dailyCompletionPercentage = activeAirdrops > 0 ? Math.round((dailyCompletedAirdrops / activeAirdrops) * 100) : 0
 
   // Calculate upcoming airdrops (those added in the last 7 days)
