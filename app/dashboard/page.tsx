@@ -1,26 +1,22 @@
-import { redirect } from "next/navigation";
+import { redirect } from "next/navigation"
 import { getSessionAppRouter } from "@/lib/auth-utils-app";
-import { getAirdrops } from "@/lib/airdrop-actions";
-import { Suspense } from "react";
-import { AirdropTableSkeleton } from "@/components/airdrop-table-skeleton";
-import { Button } from "@/components/ui/button";
-import { Plus, BarChart3, Wallet, Coins, ArrowUpRight } from "lucide-react";
-import Link from "next/link";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { AirdropTableWithControls } from "@/components/airdrop-table-with-controls";
-import { AnimatedElement } from "@/components/animated-element";
-import { PageLoader } from "@/components/loading-spinner";
-// Impor AirdropDocument
-import { type AirdropDocument } from "@/lib/models/airdrop";
+import { getAirdrops } from "@/lib/airdrop-actions"
+import { Suspense } from "react"
+import { AirdropTableSkeleton } from "@/components/airdrop-table-skeleton"
+import { Button } from "@/components/ui/button"
+import { Plus, BarChart3, Wallet, Coins, ArrowUpRight } from "lucide-react"
+import Link from "next/link"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { AirdropTableWithControls } from "@/components/airdrop-table-with-controls"
+import { AnimatedElement } from "@/components/animated-element"
+import { PageLoader } from "@/components/loading-spinner"
 
 export default async function DashboardPage() {
-  const session = await getSessionAppRouter();
+  const session = await getSessionAppRouter()
 
   if (!session) {
-    redirect("/login");
+    redirect("/login")
   }
-
-  const airdrops = await getAirdrops(session.userId);
 
   return (
     <>
@@ -44,40 +40,47 @@ export default async function DashboardPage() {
         </AnimatedElement>
 
         <Suspense fallback={<StatsCardsSkeleton />}>
-          <StatsCards airdrops={airdrops} />
+          <StatsCards userId={session.userId} />
         </Suspense>
 
         <AnimatedElement animation="fadeUp" delay={0.6}>
           <div className="bg-[#1a1f2e] border border-gray-700 rounded-lg p-6">
             <Suspense fallback={<AirdropTableSkeleton />}>
-              <AirdropContent airdrops={airdrops} />
+              <AirdropContent userId={session.userId} />
             </Suspense>
           </div>
         </AnimatedElement>
       </div>
     </>
-  );
+  )
 }
 
-// Update the StatsCards function: hapus userId karena tidak digunakan
-async function StatsCards({ airdrops }: { airdrops: AirdropDocument[] }) {
-  const totalAirdrops = airdrops.length;
-  const completedAirdrops = airdrops.filter((airdrop) => airdrop.completed).length;
-  const activeAirdrops = totalAirdrops - completedAirdrops;
+// Update the StatsCards function to show the correct data
+async function StatsCards({ userId }: { userId: string }) {
+  const airdrops = await getAirdrops(userId)
 
-  const oneDayAgo = new Date();
-  oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+  // Calculate stats
+  const totalAirdrops = airdrops.length
+  const completedAirdrops = airdrops.filter((airdrop) => airdrop.completed).length
+  const activeAirdrops = totalAirdrops - completedAirdrops
+
+  // Calculate daily completed airdrops (those completed in the last 24 hours)
+  const oneDayAgo = new Date()
+  oneDayAgo.setDate(oneDayAgo.getDate() - 1)
   const dailyCompletedAirdrops = airdrops.filter(
-    (airdrop) => airdrop.completed && airdrop.updatedAt && new Date(airdrop.updatedAt) >= oneDayAgo
-  ).length;
+    (airdrop) => airdrop.completed && airdrop.updatedAt && new Date(airdrop.updatedAt) >= oneDayAgo,
+  ).length
 
-  const dailyCompletionPercentage = activeAirdrops > 0 ? Math.round((dailyCompletedAirdrops / activeAirdrops) * 100) : 0;
+  // Calculate daily completion percentage
+  const dailyCompletionPercentage = activeAirdrops > 0 ? Math.round((dailyCompletedAirdrops / activeAirdrops) * 100) : 0
 
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-  const upcomingAirdrops = airdrops.filter((airdrop) => new Date(airdrop.createdAt) >= sevenDaysAgo).length;
+  // Calculate upcoming airdrops (those added in the last 7 days)
+  const sevenDaysAgo = new Date()
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+  const upcomingAirdrops = airdrops.filter((airdrop) => new Date(airdrop.createdAt) >= sevenDaysAgo).length
 
-  const estimatedValue = completedAirdrops * 50 + activeAirdrops * 30;
+  // Estimate value (this is a placeholder - you might want to implement your own logic)
+  const estimatedValue = completedAirdrops * 50 + activeAirdrops * 30 // Simple placeholder calculation
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -175,7 +178,7 @@ async function StatsCards({ airdrops }: { airdrops: AirdropDocument[] }) {
         </Card>
       </AnimatedElement>
     </div>
-  );
+  )
 }
 
 function StatsCardsSkeleton() {
@@ -189,12 +192,12 @@ function StatsCardsSkeleton() {
         </div>
       ))}
     </div>
-  );
+  )
 }
 
-// Update the AirdropContent function: hapus userId karena tidak digunakan
-async function AirdropContent({ airdrops }: { airdrops: AirdropDocument[] }) {
-  const hasAirdrops = airdrops.length > 0;
+async function AirdropContent({ userId }: { userId: string }) {
+  const airdrops = await getAirdrops(userId)
+  const hasAirdrops = airdrops.length > 0
 
   if (!hasAirdrops) {
     return (
@@ -211,8 +214,8 @@ async function AirdropContent({ airdrops }: { airdrops: AirdropDocument[] }) {
           </Button>
         </Link>
       </div>
-    );
+    )
   }
 
-  return <AirdropTableWithControls airdrops={airdrops} />;
+  return <AirdropTableWithControls airdrops={airdrops} />
 }
