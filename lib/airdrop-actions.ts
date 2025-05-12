@@ -4,6 +4,7 @@ import { connectToDatabase } from "./db"
 import { Airdrop, type AirdropDocument } from "./models/airdrop"
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
+import { cache } from "react"
 
 interface AddAirdropParams {
   userId: string
@@ -19,11 +20,101 @@ interface AddAirdropParams {
   guideImage: File | null
 }
 
-export async function getAirdrops(userId: string): Promise<AirdropDocument[]> {
+// Fungsi untuk mendapatkan jumlah total airdrop (untuk pagination)
+export async function getAirdropCount(userId: string): Promise<number> {
+  try {
+    await connectToDatabase()
+    return await Airdrop.countDocuments({ userId })
+  } catch (error) {
+    console.error("Error counting airdrops:", error)
+    return 0
+  }
+}
+
+// Fungsi untuk mendapatkan statistik tanpa mengambil semua data
+export const getAirdropStats = cache(async (userId: string) => {
   try {
     await connectToDatabase()
 
-    const airdrops = (await Airdrop.find({ userId }).sort({ createdAt: -1 }).lean()) as AirdropDocument[]
+    // Dapatkan jumlah total
+    const totalAirdrops = await Airdrop.countDocuments({ userId })
+
+    // Dapatkan jumlah yang completed
+    const completedAirdrops = await Airdrop.countDocuments({
+      userId,
+      completed: true,
+    })
+
+    // Hitung active airdrops
+    const activeAirdrops = totalAirdrops - completedAirdrops
+
+    // Dapatkan jumlah yang completed dalam 24 jam terakhir
+    const oneDayAgo = new Date()
+    oneDayAgo.setDate(oneDayAgo.getDate() - 1)
+
+    const dailyCompletedAirdrops = await Airdrop.countDocuments({
+      userId,
+      completed: true,
+      updatedAt: { $gte: oneDayAgo },
+    })
+
+    // Hitung persentase
+    const dailyCompletionPercentage =
+      activeAirdrops > 0 ? Math.round((dailyCompletedAirdrops / activeAirdrops) * 100) : 0
+
+    // Dapatkan jumlah yang ditambahkan dalam 7 hari terakhir
+    const sevenDaysAgo = new Date()
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+
+    const upcomingAirdrops = await Airdrop.countDocuments({
+      userId,
+      createdAt: { $gte: sevenDaysAgo },
+    })
+
+    // Estimasi nilai (sesuaikan dengan logika Anda)
+    const estimatedValue = completedAirdrops * 50 + activeAirdrops * 30
+
+    return {
+      totalAirdrops,
+      completedAirdrops,
+      activeAirdrops,
+      dailyCompletedAirdrops,
+      dailyCompletionPercentage,
+      upcomingAirdrops,
+      estimatedValue,
+    }
+  } catch (error) {
+    console.error("Error fetching airdrop stats:", error)
+    return {
+      totalAirdrops: 0,
+      completedAirdrops: 0,
+      activeAirdrops: 0,
+      dailyCompletedAirdrops: 0,
+      dailyCompletionPercentage: 0,
+      upcomingAirdrops: 0,
+      estimatedValue: 0,
+    }
+  }
+})
+
+// Ubah fungsi getAirdrops untuk mendukung pagination
+export async function getAirdrops(
+  userId: string, 
+  page = 1, 
+  limit = 10
+): Promise<AirdropDocument[]> {
+  try {
+    await connectToDatabase()
+
+    // Buat query filter dengan tipe yang lebih spesifik
+    const filter: { userId: string } = { userId }
+
+    // Gunakan skip dan limit untuk pagination
+    const airdrops = (await Airdrop.find(filter)
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean()) as AirdropDocument[]
 
     return airdrops
   } catch (error) {
@@ -32,6 +123,7 @@ export async function getAirdrops(userId: string): Promise<AirdropDocument[]> {
   }
 }
 
+// Fungsi lainnya tetap sama seperti sebelumnya
 export async function getAllAirdrops(query: string): Promise<AirdropDocument[]> {
   try {
     await connectToDatabase()
@@ -71,7 +163,9 @@ export async function getAirdropById(airdropId: string): Promise<AirdropDocument
   }
 }
 
+// Fungsi-fungsi lainnya tetap sama seperti sebelumnya
 export async function addAirdrop(params: AddAirdropParams) {
+  // Kode yang sama seperti sebelumnya
   try {
     await connectToDatabase()
 
@@ -124,8 +218,8 @@ export async function addAirdrop(params: AddAirdropParams) {
   }
 }
 
-// Direct server action for form submission with base64 image support
 export async function createAirdrop(formData: FormData) {
+  // Kode yang sama seperti sebelumnya
   try {
     const userId = formData.get("userId") as string
     const name = formData.get("name") as string
@@ -202,8 +296,8 @@ export async function createAirdrop(formData: FormData) {
   }
 }
 
-// Update airdrop with base64 image support
 export async function updateAirdrop(formData: FormData) {
+  // Kode yang sama seperti sebelumnya
   try {
     const airdropId = formData.get("airdropId") as string
     const userId = formData.get("userId") as string
@@ -267,8 +361,8 @@ export async function updateAirdrop(formData: FormData) {
   }
 }
 
-// Clone an airdrop from another user
 export async function cloneAirdrop({ airdropId, userId }: { airdropId: string; userId: string }) {
+  // Kode yang sama seperti sebelumnya
   try {
     await connectToDatabase()
 
@@ -315,8 +409,8 @@ export async function cloneAirdrop({ airdropId, userId }: { airdropId: string; u
   }
 }
 
-// Ubah fungsi toggleAirdropCompletion untuk menerima parameter forceValue
 export async function toggleAirdropCompletion(airdropId: string, forceValue?: boolean) {
+  // Kode yang sama seperti sebelumnya
   try {
     await connectToDatabase()
 
@@ -350,8 +444,8 @@ export async function toggleAirdropCompletion(airdropId: string, forceValue?: bo
   }
 }
 
-// Delete airdrop
 export async function deleteAirdrop(airdropId: string) {
+  // Kode yang sama seperti sebelumnya
   try {
     await connectToDatabase()
 
@@ -367,4 +461,3 @@ export async function deleteAirdrop(airdropId: string) {
     return { success: false, message: "An error occurred while deleting the airdrop" }
   }
 }
-

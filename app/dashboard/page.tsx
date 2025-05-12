@@ -1,22 +1,33 @@
 import { redirect } from "next/navigation"
-import { getSessionAppRouter } from "@/lib/auth-utils-app";
-import { getAirdrops } from "@/lib/airdrop-actions"
+import { getSessionAppRouter } from "@/lib/auth-utils-app"
+import { getAirdropStats, getAirdrops, getAirdropCount } from "@/lib/airdrop-actions"
 import { Suspense } from "react"
 import { AirdropTableSkeleton } from "@/components/airdrop-table-skeleton"
 import { Button } from "@/components/ui/button"
-import { Plus, BarChart3, Wallet, Coins, ArrowUpRight } from "lucide-react"
+import { Plus, BarChart3, Wallet, Coins, ArrowUpRight } from 'lucide-react'
 import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { AirdropTableWithControls } from "@/components/airdrop-table-with-controls"
 import { AnimatedElement } from "@/components/animated-element"
 import { PageLoader } from "@/components/loading-spinner"
 
-export default async function DashboardPage() {
+export const dynamic = "force-dynamic"
+export const revalidate = 60 // Revalidate every 60 seconds
+
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: { page?: string; limit?: string }
+}) {
   const session = await getSessionAppRouter()
 
   if (!session) {
     redirect("/login")
   }
+
+  // Get pagination parameters from URL
+  const page = Number(searchParams.page || 1)
+  const limit = Number(searchParams.limit || 10)
 
   return (
     <>
@@ -46,7 +57,7 @@ export default async function DashboardPage() {
         <AnimatedElement animation="fadeUp" delay={0.6}>
           <div className="bg-[#1a1f2e] border border-gray-700 rounded-lg p-6">
             <Suspense fallback={<AirdropTableSkeleton />}>
-              <AirdropContent userId={session.userId} />
+              <AirdropContent userId={session.userId} page={page} limit={limit} />
             </Suspense>
           </div>
         </AnimatedElement>
@@ -55,32 +66,10 @@ export default async function DashboardPage() {
   )
 }
 
-// Update the StatsCards function to show the correct data
+// Update the StatsCards function to use the optimized stats function
 async function StatsCards({ userId }: { userId: string }) {
-  const airdrops = await getAirdrops(userId)
-
-  // Calculate stats
-  const totalAirdrops = airdrops.length
-  const completedAirdrops = airdrops.filter((airdrop) => airdrop.completed).length
-  const activeAirdrops = totalAirdrops - completedAirdrops
-
-  // Calculate daily completed airdrops (those completed in the last 24 hours)
-  const oneDayAgo = new Date()
-  oneDayAgo.setDate(oneDayAgo.getDate() - 1)
-  const dailyCompletedAirdrops = airdrops.filter(
-    (airdrop) => airdrop.completed && airdrop.updatedAt && new Date(airdrop.updatedAt) >= oneDayAgo,
-  ).length
-
-  // Calculate daily completion percentag
-  const dailyCompletionPercentage = activeAirdrops > 0 ? Math.round((dailyCompletedAirdrops / activeAirdrops) * 100) : 0
-
-  // Calculate upcoming airdrops (those added in the last 7 days)
-  const sevenDaysAgo = new Date()
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
-  const upcomingAirdrops = airdrops.filter((airdrop) => new Date(airdrop.createdAt) >= sevenDaysAgo).length
-
-  // Estimate value (this is a placeholder - you might want to implement your own logic)
-  const estimatedValue = completedAirdrops * 50 + activeAirdrops * 30 // Simple placeholder calculation
+  // Use the optimized stats function instead of fetching all airdrops
+  const stats = await getAirdropStats(userId)
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -90,9 +79,9 @@ async function StatsCards({ userId }: { userId: string }) {
           <CardHeader className="pb-2">
             <CardDescription className="text-gray-400">Total Airdrops</CardDescription>
             <CardTitle className="text-2xl text-white flex items-baseline">
-              {totalAirdrops}
+              {stats.totalAirdrops}
               <span className="ml-2 text-sm text-green-400 flex items-center">
-                +{upcomingAirdrops}
+                +{stats.upcomingAirdrops}
                 <ArrowUpRight className="h-3 w-3 ml-0.5" />
               </span>
             </CardTitle>
@@ -100,7 +89,7 @@ async function StatsCards({ userId }: { userId: string }) {
           <CardContent>
             <div className="flex justify-between items-center">
               <span className="text-xs text-gray-400">
-                {activeAirdrops} active, {completedAirdrops} completed
+                {stats.activeAirdrops} active, {stats.completedAirdrops} completed
               </span>
               <BarChart3 className="h-5 w-5 text-blue-400" />
             </div>
@@ -114,9 +103,9 @@ async function StatsCards({ userId }: { userId: string }) {
           <CardHeader className="pb-2">
             <CardDescription className="text-gray-400">Estimated Value</CardDescription>
             <CardTitle className="text-2xl text-white flex items-baseline">
-              ${estimatedValue}
+              ${stats.estimatedValue}
               <span className="ml-2 text-sm text-green-400 flex items-center">
-                +${upcomingAirdrops * 20}
+                +${stats.upcomingAirdrops * 20}
                 <ArrowUpRight className="h-3 w-3 ml-0.5" />
               </span>
             </CardTitle>
@@ -136,9 +125,9 @@ async function StatsCards({ userId }: { userId: string }) {
           <CardHeader className="pb-2">
             <CardDescription className="text-gray-400">Completed Airdrop Daily</CardDescription>
             <CardTitle className="text-2xl text-white flex items-baseline">
-              {dailyCompletionPercentage}%
+              {stats.dailyCompletionPercentage}%
               <span className="ml-2 text-sm text-green-400 flex items-center">
-                {dailyCompletedAirdrops} today
+                {stats.dailyCompletedAirdrops} today
                 <ArrowUpRight className="h-3 w-3 ml-0.5" />
               </span>
             </CardTitle>
@@ -146,12 +135,12 @@ async function StatsCards({ userId }: { userId: string }) {
           <CardContent>
             <div className="flex justify-between items-center">
               <span className="text-xs text-gray-400">
-                {dailyCompletedAirdrops}/{activeAirdrops} daily tasks
+                {stats.dailyCompletedAirdrops}/{stats.activeAirdrops} daily tasks
               </span>
               <div className="h-2 w-24 bg-gray-700 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full"
-                  style={{ width: `${dailyCompletionPercentage}%` }}
+                  style={{ width: `${stats.dailyCompletionPercentage}%` }}
                 ></div>
               </div>
             </div>
@@ -165,13 +154,13 @@ async function StatsCards({ userId }: { userId: string }) {
           <CardHeader className="pb-2">
             <CardDescription className="text-gray-400">Upcoming Airdrops</CardDescription>
             <CardTitle className="text-2xl text-white flex items-baseline">
-              {upcomingAirdrops}
+              {stats.upcomingAirdrops}
               <span className="ml-2 text-sm text-yellow-400 flex items-center">Next 7 days</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex justify-between items-center">
-              <span className="text-xs text-gray-400">{Math.ceil(upcomingAirdrops / 3) || 0} high priority</span>
+              <span className="text-xs text-gray-400">{Math.ceil(stats.upcomingAirdrops / 3) || 0} high priority</span>
               <Coins className="h-5 w-5 text-yellow-400" />
             </div>
           </CardContent>
@@ -195,11 +184,20 @@ function StatsCardsSkeleton() {
   )
 }
 
-async function AirdropContent({ userId }: { userId: string }) {
-  const airdrops = await getAirdrops(userId)
-  const hasAirdrops = airdrops.length > 0
+async function AirdropContent({ 
+  userId, 
+  page = 1, 
+  limit = 10 
+}: { 
+  userId: string
+  page?: number
+  limit?: number
+}) {
+  // Get total count for pagination
+  const totalCount = await getAirdropCount(userId)
 
-  if (!hasAirdrops) {
+  // Check if there are any airdrops
+  if (totalCount === 0) {
     return (
       <div className="flex flex-col items-center justify-center p-12 text-center border border-gray-700 rounded-lg bg-[#1a1f2e] text-white shadow-lg">
         <div className="w-16 h-16 bg-blue-900/20 rounded-full flex items-center justify-center mb-4">
@@ -217,5 +215,8 @@ async function AirdropContent({ userId }: { userId: string }) {
     )
   }
 
-  return <AirdropTableWithControls airdrops={airdrops} />
+  // Get paginated airdrops
+  const airdrops = await getAirdrops(userId, page, limit)
+
+  return <AirdropTableWithControls airdrops={airdrops} totalCount={totalCount} page={page} limit={limit} />
 }
