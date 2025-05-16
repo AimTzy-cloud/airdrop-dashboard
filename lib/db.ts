@@ -3,19 +3,19 @@ import mongoose from "mongoose"
 
 const MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017/airdrop-tracker"
 
-// Bikin tipe buat cache koneksi mongoose global
+// Define the type for our global mongoose connection cache
 interface GlobalMongoose {
   conn: typeof mongoose | null
   promise: Promise<typeof mongoose> | null
 }
 
-// Tambahin mongoose ke tipe global
+// Add mongoose to the global type
 declare global {
   // eslint-disable-next-line no-var
   var mongooseConnection: GlobalMongoose
 }
 
-// Inisialisasi cache koneksi mongoose global
+// Initialize the global mongoose connection cache
 if (!global.mongooseConnection) {
   global.mongooseConnection = {
     conn: null,
@@ -23,22 +23,23 @@ if (!global.mongooseConnection) {
   }
 }
 
-// Maksimal coba ulang koneksi ke database
+// Maximum number of retries for database connection
 const MAX_RETRIES = 3
-const RETRY_DELAY = 1000 // 1 detik
+const RETRY_DELAY = 1000 // 1 second
 
 export async function connectToDatabase() {
-  // Kalo udah ada koneksi, langsung balikin
   if (global.mongooseConnection.conn) {
     return global.mongooseConnection.conn
   }
 
-  // Kalo belum ada promise koneksi, bikin baru
   if (!global.mongooseConnection.promise) {
     const opts = {
       bufferCommands: false,
-      maxPoolSize: 10, // Maksimal koneksi di pool
-      minPoolSize: 5, // Minimal koneksi di pool
+      serverSelectionTimeoutMS: 5000, // 5 seconds timeout for server selection
+      socketTimeoutMS: 45000, // 45 seconds timeout for operations
+      connectTimeoutMS: 10000, // 10 seconds timeout for initial connection
+      maxPoolSize: 10, // Maximum number of connections in the pool
+      minPoolSize: 5, // Minimum number of connections in the pool
       retryWrites: true,
       retryReads: true,
     }
@@ -47,12 +48,12 @@ export async function connectToDatabase() {
     const connectWithRetry = async () => {
       try {
         const mongooseInstance = await mongoose.connect(MONGODB_URI, opts)
-        console.log("Berhasil konek ke MongoDB")
+        console.log("Connected to MongoDB")
         return mongooseInstance
       } catch (error) {
         if (retries < MAX_RETRIES) {
           retries++
-          console.log(`Gagal konek ke MongoDB (percobaan ${retries}). Coba lagi dalam ${RETRY_DELAY}ms...`)
+          console.log(`MongoDB connection attempt ${retries} failed. Retrying in ${RETRY_DELAY}ms...`)
           await new Promise(resolve => setTimeout(resolve, RETRY_DELAY))
           return connectWithRetry()
         }
@@ -67,7 +68,7 @@ export async function connectToDatabase() {
     global.mongooseConnection.conn = await global.mongooseConnection.promise
   } catch (e) {
     global.mongooseConnection.promise = null
-    console.error("Error konek ke MongoDB:", e)
+    console.error("Error connecting to MongoDB:", e)
     throw e
   }
 
