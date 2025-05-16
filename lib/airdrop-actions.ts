@@ -4,6 +4,7 @@ import { connectToDatabase } from "./db"
 import { Airdrop, type AirdropDocument } from "./models/airdrop"
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
+import { serializeMongoDoc } from "./serialization"
 
 interface AddAirdropParams {
   userId: string
@@ -23,9 +24,10 @@ export async function getAirdrops(userId: string): Promise<AirdropDocument[]> {
   try {
     await connectToDatabase()
 
-    const airdrops = (await Airdrop.find({ userId }).sort({ createdAt: -1 }).lean()) as AirdropDocument[]
+    const airdrops = await Airdrop.find({ userId }).sort({ createdAt: -1 }).lean()
 
-    return airdrops
+    // Serialize MongoDB documents before returning
+    return serializeMongoDoc<AirdropDocument[]>(airdrops)
   } catch (error) {
     console.error("Error fetching airdrops:", error)
     return []
@@ -40,14 +42,15 @@ export async function getAllAirdrops(query: string): Promise<AirdropDocument[]> 
     const searchRegex = new RegExp(query, "i")
 
     // Search across multiple fields
-    const airdrops = (await Airdrop.find({
+    const airdrops = await Airdrop.find({
       $or: [{ name: searchRegex }, { type: searchRegex }, { chain: searchRegex }, { description: searchRegex }],
     })
       .sort({ createdAt: -1 })
       .limit(20)
-      .lean()) as AirdropDocument[]
+      .lean()
 
-    return airdrops
+    // Serialize MongoDB documents before returning
+    return serializeMongoDoc<AirdropDocument[]>(airdrops)
   } catch (error) {
     console.error("Error searching airdrops:", error)
     return []
@@ -58,13 +61,14 @@ export async function getAirdropById(airdropId: string): Promise<AirdropDocument
   try {
     await connectToDatabase()
 
-    const airdrop = (await Airdrop.findById(airdropId).lean()) as AirdropDocument | null
+    const airdrop = await Airdrop.findById(airdropId).lean()
 
     if (!airdrop) {
       return null
     }
 
-    return airdrop
+    // Serialize MongoDB document before returning
+    return serializeMongoDoc<AirdropDocument>(airdrop)
   } catch (error) {
     console.error("Error fetching airdrop:", error)
     return null
@@ -343,7 +347,7 @@ export async function toggleAirdropCompletion(airdropId: string, forceValue?: bo
     await airdrop.save()
 
     revalidatePath("/dashboard")
-    return { success: true }
+    return { success: true, airdrop: serializeMongoDoc<AirdropDocument>(airdrop.toObject()) }
   } catch (error) {
     console.error("Error toggling airdrop completion:", error)
     return { success: false, message: "An error occurred while updating the airdrop" }
@@ -367,4 +371,3 @@ export async function deleteAirdrop(airdropId: string) {
     return { success: false, message: "An error occurred while deleting the airdrop" }
   }
 }
-
