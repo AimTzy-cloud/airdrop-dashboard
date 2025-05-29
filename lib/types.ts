@@ -30,6 +30,8 @@ export interface User {
     notifications: boolean
     language: string
   }
+  hasLinkedGoogle?: boolean
+  googleId?: string
 }
 
 export interface Session {
@@ -232,6 +234,8 @@ export interface UserData {
     language?: string
   }
   connections: string[]
+  hasLinkedGoogle?: boolean
+  googleId?: string
 }
 
 // Notification types

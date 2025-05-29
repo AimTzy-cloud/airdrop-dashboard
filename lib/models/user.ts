@@ -17,6 +17,8 @@ export interface IUser extends Document {
     notifications?: boolean
     language?: string
   }
+  googleId?: string // Added for Google authentication
+  hasLinkedGoogle: boolean // Track if user has linked Google account
   comparePassword(candidatePassword: string): Promise<boolean>
 }
 
@@ -85,11 +87,24 @@ const UserSchema = new Schema<IUser>(
         default: "id", // Default to Indonesian
       },
     },
+    googleId: {
+      type: String,
+      sparse: true, // Allows multiple null values (for users without Google)
+      index: true,
+    },
+    hasLinkedGoogle: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,
   },
 )
+
+// Create a sparse unique index for googleId
+// This ensures uniqueness when present but allows multiple documents without googleId
+UserSchema.index({ googleId: 1 }, { unique: true, sparse: true })
 
 // Hash password before saving
 UserSchema.pre("save", async function (next) {

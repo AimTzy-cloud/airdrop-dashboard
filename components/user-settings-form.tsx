@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { formatDistanceToNow } from "date-fns"
-import { Loader2, Save, Upload } from "lucide-react"
+import { Loader2, Save, Upload, ChromeIcon as Google, Check, AlertTriangle } from 'lucide-react'
 // Socket import removed
 
 interface UserSettingsFormProps {
@@ -33,6 +33,9 @@ interface UserSettingsFormProps {
       language?: string
     }
     connections?: string[]
+    // Add Google connection fields
+    hasLinkedGoogle?: boolean
+    googleId?: string
   }
 }
 
@@ -53,7 +56,7 @@ export default function UserSettingsForm({ user }: UserSettingsFormProps) {
 
   // Socket connection removed
   // Using a mocked connection status instead
-  // const isConnected = true // Always show as connected
+  // econst isConnected = true // Always show as connected
 
   // Socket-related useEffect removed
 
@@ -246,12 +249,18 @@ export default function UserSettingsForm({ user }: UserSettingsFormProps) {
     }
   }
 
+  const handleConnectGoogle = () => {
+    // Redirect to dashboard where the popup will appear
+    window.location.href = "/dashboard"
+  }
+
   return (
     <div>
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-3 mb-6 relative">
+        <TabsList className="grid grid-cols-4 mb-6 relative">
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="security">Security</TabsTrigger>
+          <TabsTrigger value="connections">Connections</TabsTrigger>
           <TabsTrigger value="preferences" disabled>
             Preferences
             <span className="absolute -top-2 right-2 bg-yellow-600 text-yellow-100 text-[10px] px-1 rounded">Soon</span>
@@ -401,6 +410,98 @@ export default function UserSettingsForm({ user }: UserSettingsFormProps) {
               )}
             </Button>
           </form>
+        </TabsContent>
+
+        {/* New Connections Tab */}
+        <TabsContent value="connections">
+          <div className="space-y-6">
+            <div className="bg-gray-900/50 border border-gray-700 rounded-lg p-4">
+              <h3 className="text-lg font-medium text-white mb-4">Connected Accounts</h3>
+              
+              {/* Google Account Connection */}
+              <div className="flex items-center justify-between p-4 bg-gray-800 rounded-lg border border-gray-700">
+                <div className="flex items-center gap-3">
+                  <div className="bg-gray-700 p-2 rounded-full">
+                    <Google className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-white font-medium">Google</p>
+                    <p className="text-xs text-gray-400">
+                      {user.hasLinkedGoogle
+                        ? "Your Google account is connected"
+                        : "Connect your Google account for easier login"}
+                    </p>
+                  </div>
+                </div>
+                
+                {user.hasLinkedGoogle ? (
+                  <div className="flex items-center text-green-500 gap-1 bg-green-900/20 px-2 py-1 rounded">
+                    <Check className="h-4 w-4" />
+                    <span className="text-xs">Connected</span>
+                  </div>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="bg-transparent border-gray-600 text-white hover:bg-gray-700"
+                    onClick={handleConnectGoogle}
+                  >
+                    Connect
+                  </Button>
+                )}
+              </div>
+
+              {/* Warning message if not connected */}
+              {!user.hasLinkedGoogle && (
+                <div className="mt-4 p-3 bg-yellow-900/20 border border-yellow-800/50 rounded-md flex items-start gap-2">
+                  <AlertTriangle className="h-5 w-5 text-yellow-500 shrink-0 mt-0.5" />
+                  <p className="text-sm text-yellow-200">
+                    Our system will be transitioning to Google authentication. Please connect your Google account to avoid login issues in the future.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Future connections section */}
+            <div className="bg-gray-900/50 border border-gray-700 rounded-lg p-4">
+              <h3 className="text-lg font-medium text-white mb-4">Coming Soon</h3>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-4 bg-gray-800 rounded-lg border border-gray-700 opacity-50">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-gray-700 p-2 rounded-full">
+                      <svg className="h-5 w-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm4.441 16.892c-2.102.144-6.784.144-8.883 0-2.276-.156-2.541-1.27-2.558-4.892.017-3.629.285-4.736 2.558-4.892 2.099-.144 6.782-.144 8.883 0 2.277.156 2.541 1.27 2.559 4.892-.018 3.629-.285 4.736-2.559 4.892zm-6.441-7.234l4.917 2.338-4.917 2.346v-4.684z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-white font-medium">YouTube</p>
+                      <p className="text-xs text-gray-400">Connect your YouTube account</p>
+                    </div>
+                  </div>
+                  <Badge variant="outline" className="text-xs bg-gray-700 text-gray-300">
+                    Soon
+                  </Badge>
+                </div>
+
+                <div className="flex items-center justify-between p-4 bg-gray-800 rounded-lg border border-gray-700 opacity-50">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-gray-700 p-2 rounded-full">
+                      <svg className="h-5 w-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-white font-medium">Twitter</p>
+                      <p className="text-xs text-gray-400">Connect your Twitter account</p>
+                    </div>
+                  </div>
+                  <Badge variant="outline" className="text-xs bg-gray-700 text-gray-300">
+                    Soon
+                  </Badge>
+                </div>
+              </div>
+            </div>
+          </div>
         </TabsContent>
 
         <TabsContent value="preferences">

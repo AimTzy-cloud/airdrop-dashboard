@@ -28,6 +28,8 @@ async function migrateUsers() {
         { lastActive: { $exists: false } },
         { joinedDate: { $exists: false } },
         { email: { $exists: false } },
+        { googleId: { $exists: false } },       // Tambahkan googleId
+        { hasLinkedGoogle: { $exists: false } } // Tambahkan hasLinkedGoogle
       ],
     });
 
@@ -48,6 +50,8 @@ async function migrateUsers() {
         language: "id",
       };
       user.email = user.email || undefined;
+      user.googleId = user.googleId || undefined;       // Set googleId default ke undefined
+      user.hasLinkedGoogle = user.hasLinkedGoogle || false; // Set hasLinkedGoogle default ke false
 
       await user.save();
       console.log(`Migrated user: ${user.username} with avatar: ${user.profilePicture}`);

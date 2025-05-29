@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { AirdropTableWithControls } from "@/components/airdrop-table-with-controls"
 import { AnimatedElement } from "@/components/animated-element"
 import { PageLoader } from "@/components/loading-spinner"
+import AnnouncementPopup from "@/components/AnnouncementPopup";
 
 export default async function DashboardPage() {
   const session = await getSessionAppRouter()
@@ -21,6 +22,7 @@ export default async function DashboardPage() {
   return (
     <>
       <PageLoader />
+      <AnnouncementPopup />
       <div className="space-y-8">
         <AnimatedElement animation="fadeUp" delay={0.1}>
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
