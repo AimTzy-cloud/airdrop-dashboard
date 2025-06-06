@@ -1,22 +1,50 @@
-import { redirect } from "next/navigation"
+import { redirect } from "next/navigation";
 import { getSessionAppRouter } from "@/lib/auth-utils-app";
-import { getAirdrops } from "@/lib/airdrop-actions"
-import { Suspense } from "react"
-import { AirdropTableSkeleton } from "@/components/airdrop-table-skeleton"
-import { Button } from "@/components/ui/button"
-import { Plus, BarChart3, Wallet, Coins, ArrowUpRight } from "lucide-react"
-import Link from "next/link"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { AirdropTableWithControls } from "@/components/airdrop-table-with-controls"
-import { AnimatedElement } from "@/components/animated-element"
-import { PageLoader } from "@/components/loading-spinner"
+import { getAirdrops } from "@/lib/airdrop-actions";
+import { Suspense } from "react";
+import { AirdropTableSkeleton } from "@/components/airdrop-table-skeleton";
+import { Button } from "@/components/ui/button";
+import { Plus, BarChart3, Wallet, Coins, ArrowUpRight } from "lucide-react";
+import Link from "next/link";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { AirdropTableWithControls } from "@/components/airdrop-table-with-controls";
+import { AnimatedElement } from "@/components/animated-element";
+import { PageLoader } from "@/components/loading-spinner";
 import AnnouncementPopup from "@/components/AnnouncementPopup";
 
+// Hardcode status maintenance (ubah ke false saat maintenance selesai)
+const isMaintenanceMode = true;
+
+// Komponen Maintenance Overlay
+function MaintenanceOverlay() {
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50">
+      <div className="bg-[#1a1f2e] border border-gray-700 rounded-lg p-8 text-center max-w-md mx-4">
+        <h2 className="text-2xl font-bold text-white mb-4">Website Under Maintenance</h2>
+        <p className="text-gray-400 mb-6">
+          We&apos;re currently performing scheduled maintenance. Please check back later.
+        </p>
+        <Button
+          disabled
+          className="bg-gray-600 cursor-not-allowed"
+        >
+          Website Temporarily Unavailable
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export default async function DashboardPage() {
-  const session = await getSessionAppRouter()
+  const session = await getSessionAppRouter();
 
   if (!session) {
-    redirect("/login")
+    redirect("/login");
+  }
+
+  // Jika maintenance mode aktif, hanya tampilkan overlay
+  if (isMaintenanceMode) {
+    return <MaintenanceOverlay />;
   }
 
   return (
@@ -54,35 +82,30 @@ export default async function DashboardPage() {
         </AnimatedElement>
       </div>
     </>
-  )
+  );
 }
 
-// Update the StatsCards function to show the correct data
+// Fungsi StatsCards dan lainnya tetap sama
 async function StatsCards({ userId }: { userId: string }) {
-  const airdrops = await getAirdrops(userId)
+  const airdrops = await getAirdrops(userId);
 
-  // Calculate stats
-  const totalAirdrops = airdrops.length
-  const completedAirdrops = airdrops.filter((airdrop) => airdrop.completed).length
-  const activeAirdrops = totalAirdrops - completedAirdrops
+  const totalAirdrops = airdrops.length;
+  const completedAirdrops = airdrops.filter((airdrop) => airdrop.completed).length;
+  const activeAirdrops = totalAirdrops - completedAirdrops;
 
-  // Calculate daily completed airdrops (those completed in the last 24 hours)
-  const oneDayAgo = new Date()
-  oneDayAgo.setDate(oneDayAgo.getDate() - 1)
+  const oneDayAgo = new Date();
+  oneDayAgo.setDate(oneDayAgo.getDate() - 1);
   const dailyCompletedAirdrops = airdrops.filter(
     (airdrop) => airdrop.completed && airdrop.updatedAt && new Date(airdrop.updatedAt) >= oneDayAgo,
-  ).length
+  ).length;
 
-  // Calculate daily completion percentage
-  const dailyCompletionPercentage = activeAirdrops > 0 ? Math.round((dailyCompletedAirdrops / activeAirdrops) * 100) : 0
+  const dailyCompletionPercentage = activeAirdrops > 0 ? Math.round((dailyCompletedAirdrops / activeAirdrops) * 100) : 0;
 
-  // Calculate upcoming airdrops (those added in the last 7 days)
-  const sevenDaysAgo = new Date()
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
-  const upcomingAirdrops = airdrops.filter((airdrop) => new Date(airdrop.createdAt) >= sevenDaysAgo).length
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  const upcomingAirdrops = airdrops.filter((airdrop) => new Date(airdrop.createdAt) >= sevenDaysAgo).length;
 
-  // Estimate value (this is a placeholder - you might want to implement your own logic)
-  const estimatedValue = completedAirdrops * 50 + activeAirdrops * 30 // Simple placeholder calculation
+  const estimatedValue = completedAirdrops * 50 + activeAirdrops * 30;
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -180,7 +203,7 @@ async function StatsCards({ userId }: { userId: string }) {
         </Card>
       </AnimatedElement>
     </div>
-  )
+  );
 }
 
 function StatsCardsSkeleton() {
@@ -194,12 +217,12 @@ function StatsCardsSkeleton() {
         </div>
       ))}
     </div>
-  )
+  );
 }
 
 async function AirdropContent({ userId }: { userId: string }) {
-  const airdrops = await getAirdrops(userId)
-  const hasAirdrops = airdrops.length > 0
+  const airdrops = await getAirdrops(userId);
+  const hasAirdrops = airdrops.length > 0;
 
   if (!hasAirdrops) {
     return (
@@ -216,8 +239,8 @@ async function AirdropContent({ userId }: { userId: string }) {
           </Button>
         </Link>
       </div>
-    )
+    );
   }
 
-  return <AirdropTableWithControls airdrops={airdrops} />
+  return <AirdropTableWithControls airdrops={airdrops} />;
 }
